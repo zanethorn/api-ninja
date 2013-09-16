@@ -1,0 +1,6 @@
+﻿LIST = 'list'
+GET = 'get'
+CREATE = 'create'
+UPDATE = 'update'
+DELETE = 'delete'
+OPTIONS = 'options'
