@@ -1,12 +1,21 @@
 from distutils.core import setup
 
 setup(
-    name='api-ninja',
+    name='apininja',
     version='0.1dev',
     author='Zane Thorn',
     author_email='zthorn@shccs.com',
-    packages=['src','src.endpoints','src.controllers'],
+    packages=[
+        'apininja',
+        'apininja.endpoints',
+        'apininja.controllers',
+        'apininja.data',
+        'apininja.data.adapters',
+        'apininja.data.formatters',
+        'apininja.expressions',
+        'apininja.security'
+        ],
     license=open('LICENSE').read(),
     description='An API-focused content-management platform',
-    long_description=open('README').read(),
+    long_description=open('README.md').read(),
 )

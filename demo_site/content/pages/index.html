@@ -1,0 +1,219 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<style type="text/css">
+			
+			.menu{
+				position:absolute;
+				top:0;
+				width:200px;
+				left:0;
+				bottom:0;
+			}
+			
+			.menu_item {
+				width:180px;
+				padding:10px;
+				cursor:pointer;
+				background: #ffffff; /* Old browsers */
+				background: -moz-linear-gradient(top, #ffffff 80%, #6cb4d8 100%); /* FF3.6+ */
+				background: -webkit-gradient(linear, left top, left bottom, color-stop(80%,#ffffff), color-stop(100%,#6cb4d8)); /* Chrome,Safari4+ */
+				background: -webkit-linear-gradient(top, #ffffff 80%,#6cb4d8 100%); /* Chrome10+,Safari5.1+ */
+				background: -o-linear-gradient(top, #ffffff 80%,#6cb4d8 100%); /* Opera 11.10+ */
+				background: -ms-linear-gradient(top, #ffffff 80%,#6cb4d8 100%); /* IE10+ */
+				background: linear-gradient(to bottom, #ffffff 80%,#6cb4d8 100%); /* W3C */
+				filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#6cb4d8',GradientType=0 ); /* IE6-9 */
+			}
+			
+			.menu_item:hover{
+				color:#08c;
+				text-decoration:underline;
+			}
+			
+			.menu_link {
+				font-size:2em;
+			}
+			
+			#header{
+				position:absolute;
+				top:0;
+				right:0;
+				left:0;
+				height:100px;
+				background:#6cb4d8;
+			}
+			
+			#header_stripe{
+				height:10px;
+				background:#08c;
+				position:absolute;
+				top:90px;
+				right:0;
+				left:0;
+			}
+			
+			#main_body{
+				position:absolute;
+				top:100px;
+				right:0;
+				left:0;
+				bottom:0;
+			}
+			
+			#contents{
+				position:absolute;
+				top:0;
+				right:0;
+				left:200px;
+				bottom:0;
+			}
+			
+			#page{
+				height: 99%;
+				width: 100%;
+				border:none;
+			}
+			
+			#title{
+				color:white;
+				margin-left:10px;
+				font-size:2.5em;
+			}
+			
+			#back_area{
+				position:absolute;
+				top:0;
+				left:200px;
+			}
+			
+			.plusButton{
+				background-image:url('/images/edit-add-4.png');
+				width:64px;
+				height:64px;
+				position:absolute;
+				right:16px;
+				top:16px;
+				cursor:pointer;
+			}
+		</style>
+		<script type="text/javascript">
+			$(function(){
+				$('#loginDialog').dialog({
+					modal: true,
+					autoOpen: false,
+					resizable:false,
+				});
+				
+				$('#loginButton').click(attemptLogin);
+				if (device == 'android'){
+					$('#androidDownload').show();
+					}
+					
+				$.ajax({
+					url:'/users/me',
+					dataType:'json',
+					complete:function(r,text){
+						if (text == 'success'){
+							loadMenu();
+						}
+						else{
+							showLogin();
+						}
+					}
+				});
+			});
+			
+	
+			
+			function loadMenu(){
+				token = getQuery('$token');
+				$.ajax({
+					url:'/menu',
+					dataType:'json',
+					success:onloadMenu
+				});
+			}
+			
+			function onloadMenu(response){
+				data = response['$data'];
+				var menu = $('#menu');
+				for (var i=0;i < data.length; i++){
+					var item = data[i];
+					var view = createMenuItem(item);
+					menu.append(view);
+				}
+				$('#page').attr('src','/pages/conversations.html');
+			}
+			
+			function createMenuItem(item){
+				var div = $('<div class="menu_item"></div>');
+				var link = $('<a class="menu_link"></a>').appendTo(div);
+				link.html(item.name);
+				
+				div.click(function(){
+					$('#header_buttons').html('');
+					$('#page').attr('src',item.url);
+					bridge.set_title(item.name);
+				});
+				
+				return div;
+			}
+			
+			function showLogin(){
+				$('#loginDialog').dialog('open');
+			}
+			
+			function attemptLogin(){
+				var email = $('#email').val();
+				var password = $('#password').val();
+				
+				$.ajax({
+					url:'/login',
+					type:'POST',
+					dataType:'json',
+					data:JSON.stringify({email:email,password:password}),
+					success:function(){
+						$('#loginDialog').dialog('close');
+						loadMenu();
+					},
+					error:function(){
+						$('#loginFailed').show();
+					}
+				});
+			}
+		</script>
+	</head>
+	<body>
+		<div id="header">
+			<h2 id="title"></h2>
+			<a href="/app/AnyApi.Android.apk" id="androidDownload" style="display:none">Download Android App</a>
+			<div id="back_area"> </div>
+			<div id="header_buttons"></div>
+			<div id="header_stripe"></div>
+		</div>
+		<div id="main_body" class="row">
+			<div id="menu">
+			</div>
+			<div id="contents">
+				<iframe id="page" src="">
+				</iframe>
+			</div>
+		</div>
+		<div id="loginDialog" title="Login">
+			<div>
+				<p><strong>Email Address</strong></p>
+				<input type="text" id="email" />
+			</div>
+			<div>
+				<p><strong>Password</strong></p>
+				<input type="password" id="password" />
+			</div>
+			<div id="loginFailed" style="display:none">
+				<p style="color:red"><strong>Invalid Email or Password</strong></p>
+			</div>
+			<div>
+				<button id="loginButton">Login</button>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,76 @@
+{
+	"use_forking": true,
+	"endpoints":[
+		{ 
+			"name": "unsecure",
+			"protocol": "http",
+			"address": "192.168.254.118",
+			"port": 8080
+			},
+		{
+			"name": "secure",
+			"protocol":"https",
+			"address": "192.168.254.118",
+			"port": 4443,
+			"certfile": "certs/test.cer",
+			"keyfile": "certs/privkey.pem",
+			"key_password": "test"
+			},
+		{
+			"name": "ftp",
+			"protocol":"ftp",
+			"address": "192.168.254.118",
+			"port": 2223
+			}
+		],
+	"routes":[
+		{
+			"name":"content",
+			"path":"/content/{*path}",
+			"controller":"static_content",
+			"protocols":["http","https"]
+			},
+		{
+			"name":"data",
+			"path":"/data/{*path}",
+			"controller":"data_controller",
+			"protocols":["http","https"]
+			},
+		{
+			"name":"ftp-content",
+			"path":"{*path}",
+			"controller":"ftp-content",
+			"protocols":["ftp"]
+			},
+		{
+			"name":"default",
+			"path":"/{controller}/{action}/{id}",
+			"protocols":["http","https"]
+			}
+		],
+	"controllers":[
+		{
+			"name":"ftp-content",
+			"map_to":"static_content",
+			"allow_directory_listing":true
+			},
+		{
+			"name":"data_controller",
+			"database":"shccs",
+			"map_to":"data"
+			}
+		],
+	"databases":[
+		{
+			"name":"shccs",
+			"adapter":"mongodb",
+			"connection":{
+				"server":"mongodb://legacyitmongodb.cloudapp.net/",
+				"port":27017,
+				"database":"shccs"
+				},
+			"default_limit":50,
+			"max_limit": 500
+			}
+		]
+	}
