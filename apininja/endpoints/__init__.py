@@ -100,6 +100,7 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
         response.connection = connection
         
         context = ExecutionContext(request,response)
+        context.endpoint = self
         return context
         
     def process_context(self,context):
@@ -120,9 +121,8 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
             context.route = self.find_route(context)
             context.controller = self.find_controller(context)
             
-            result = context.controller.execute()
-            if result and not context.response.status:  
-                context.response.data = result
+            context.response.data  = context.controller.execute()
+            if not context.response.status:  
                 context.response.status = self.STATUS_SUCCESS
 
             if response.status == 0:
@@ -131,11 +131,12 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
         except StopExecutionException:
             #traceback.print_last(limit=3)
             log.warning('Endpoint %s stopped with %d',self.name,response.status)
-        # except Exception as ex:
-            # log.error('Endpoint %s encoutered error %s',self.name, ex)
-            # response.status = 500
-            # response.message = str(ex)
-            # response.data = None
+        except Exception as ex:
+            log.error('Endpoint %s encoutered error %s',self.name, ex)
+            traceback.print_exc()
+            response.status = 500
+            response.message = str(ex)
+            response.data = None
         finally:
             self.format_response(context)
             if not response._dstream.closed:
@@ -158,27 +159,25 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
         raise NotImplementedError()
         
     def find_route(self,context):
-        route = self.app.map_route(context.request)
+        route, variables = self.app.map_route(context.request)
         if not route:
             context.response.not_found('no route found')
         
         log.debug('%s using route %s'%(self.name,route.name))
         context.route = route
-        route_variables = route.get_variables(context.request.full_path)
-        context.variables.update(route_variables)
-        if 'path' in route_variables:
-            context.request.path = route_variables['path']
+        #route_variables = route.get_variables(context.request.full_path)
+        context.variables.update(variables)
+        if 'path' in variables:
+            context.request.path = variables['path']
         return route
             
     def find_controller(self,context):
         name = ''
-        cls = None
         if context.route.controller:
             name = context.route.controller
         else:
             try:
-                name = context.request.variables['controller']
-                context.variables['controller'] = name
+                name = context.variables['controller']
             except KeyError:
                 pass
         controller = self.app.get_controller(name,context)

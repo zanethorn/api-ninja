@@ -1,5 +1,6 @@
 ﻿import datetime
 from apininja.log import log
+from apininja.helpers import *
 
 simple_types = [
     str,
@@ -17,6 +18,7 @@ class DataAttribute():
     default = None
     required = False
     data_type = None
+    parent_type = None
 
     def __init__(self, name, **kwargs):
         self.name = name
@@ -37,7 +39,7 @@ class DataAttribute():
     def __set__(self,obj,value):
         obj._data[self.name] = value
         
-def attribute(name, **kwargs):
+def attribute(name='', **kwargs):
     return DataAttribute(name,**kwargs)
     
     
@@ -74,10 +76,15 @@ def roles(read,write):
     return wrapper
 
 class DataObjectType(type):
-    known_types= {}#{ t.__name__ : t for t in simple_types }
+    known_types= { t.__name__ : t for t in simple_types }
     __metadata__ = {}
     
     def __new__(meta,name,bases,dct):
+        for k,v in dct.items():
+            if isinstance(v,DataAttribute):
+                if not v.name:
+                    v.name = k
+    
         try:
             return meta.known_types[name]
         except KeyError:
@@ -86,6 +93,11 @@ class DataObjectType(type):
         cls = type.__new__(meta,name,bases,dct)
         attributes = list(filter(lambda v:isinstance(v,DataAttribute), dct.values()))
         cls.__metadata__['attributes'] = attributes
+        for attr in attributes:
+            attr.parent_type = cls
+            
+        name = convert_camel_case(name)
+        cls.__name__ = name
         log.info('Found DataObject Type %s',name)
         meta.known_types[name] = cls
         return cls
@@ -120,7 +132,9 @@ def find_type(name):
         
 @known_type('object')
 class DataObject(metaclass = DataObjectType):
-   
+    last_updated = attribute('last_updated',default=None, readonly= True)
+    created = attribute('created',default=None, readonly=True)
+    
     def __init__(self,parent=None,data={}, context=None):
         self._parent = parent
         self._data = data
@@ -129,12 +143,20 @@ class DataObject(metaclass = DataObjectType):
             self._data['_t'] = type(self).__metadata__['_t']
         
     @property
+    def id(self):
+        try:
+            return self._data['_id']
+        except KeyError:
+            return None
+        
+    @property
     def context(self):
         return self._context
         
     @property
     def parent(self):
         return self._parent
+        
 
 def make_type(name,attributes,parent='object', read_roles= None,write_roles = None,**kwargs):
     dct = {}

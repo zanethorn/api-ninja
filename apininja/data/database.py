@@ -23,7 +23,7 @@ class Database(Configurable, metaclass =DatabaseMetaclass ):
         if not self.system_config:
             self.system_config = {
                 'name': self.data_adapter.system_container,
-                '_t': 'container',
+                '_t': 'system_container',
                 'item_type':'container'
                 }
         self.system_container = self.get_system_container()

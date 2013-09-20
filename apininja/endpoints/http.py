@@ -9,7 +9,9 @@ import email.utils
 
 
 class HttpEndpoint(TcpEndpoint):
+    secure_protocol = 'https'
     max_request_length = 65536
+    user_database = ''
     
     STATUS_SUCCESS = 200
     STATUS_NO_CONTENT = 204
@@ -37,6 +39,7 @@ class HttpEndpoint(TcpEndpoint):
         requestline = str(raw_input,'iso-8859-1')
         requestline = requestline.strip('\r\n')
         
+        log.debug('%s got request %s',self.name,requestline)
         parts = requestline.split()
         if len(parts) == 3:
             command, path, version = parts
@@ -46,9 +49,7 @@ class HttpEndpoint(TcpEndpoint):
         request.command = command.upper()
         
         request.version = version
-        log.debug('%s got request %s:%s',self.name,command,path)
-        
-        
+
         try:
             headers = http.client.parse_headers(request._dstream,_class=http.client.HTTPMessage)
         except http.client.LineTooLong:
@@ -63,13 +64,21 @@ class HttpEndpoint(TcpEndpoint):
             value = headers[h]
             setattr(request,var_name,value)
             
+        # fix header values
         if request.allowed_types:
             request.allowed_types = request.allowed_types.split(',')
-
+        if request.allowed_compression:
+            request.allowed_compression = request.allowed_compression.split(',')
+        if request.if_modified_since:
+            request.if_modified_since = email.utils.parsedate_to_datetime(request.if_modified_since)
+        if request.send_date:
+            request.send_date = email.utils.parsedate_to_datetime(request.send_date)
+        if request.data_length:
+            request.data_length = int(request.data_length)
                 
         request.uri = urllib.parse.urlparse(path)
         request.full_path = request.uri.path.lower()
-        request.path = request.full_path.split('/')
+        request.path = list(filter(lambda i:i,request.full_path.split('/')))
         
         query_parts = request.uri.query.split('&')
         for q in query_parts:
@@ -100,16 +109,22 @@ class HttpEndpoint(TcpEndpoint):
         if response.allow_actions:
             response.allow_actions = ', '.join([reverse_action_map[i] for i in response.allow_actions])
             
-        data = None
-        if request.command != 'HEAD' and response.data:
-            data = response.data
-        
+        if response.last_modified:
+            response.last_modified = email.utils.format_datetime(response.last_modified)
+            
+        if request.if_no_match:
+            if request.if_no_match == response.data_hash:
+                response.status = STATUS_NOT_MODIFIED
+                response.data = None
+            
+        # write response line
         out_buffer = io.BytesIO()
         response_line = '%s %d %s\r\n'%(request.version, response.status, response.message)
         response_line = response_line.encode('latin-1','strict')
         #log.debug('returning response %s'%response_line)
         out_buffer.write(response_line)
         
+        # write headers
         for var,header in response_header_map.items():
             value = getattr(response,var)
             if value:
@@ -119,14 +134,25 @@ class HttpEndpoint(TcpEndpoint):
             
         out_buffer.write('\r\n'.encode('latin-1','strict'))
         
-        if data:
-            out_buffer.write(data)
+        # write body
+        if request.command != 'HEAD' and response.data:
+            out_buffer.write(response.data_stream)
         
+        # dump everything to output stream
         response._dstream.write(out_buffer.getbuffer())
         out_buffer.close()
         
     def find_user(self,context):
-        pass
+        token = None
+        try:
+            token = context.variables['token']
+        except KeyError:
+            return None
+        
+        db = self.app.get_database(self.user_database)
+        users = db.get('users')
+        user = users.get_user_by_token(token)
+        return user
         
     def map_action(self,context):
         log.debug('%s finding action for %s',self.name,context.request.command)
@@ -143,12 +169,14 @@ request_header_map = {
     'connection':'connection',
     'content-length':'data_length',
     'content-md5':'data_hash',
-    'content_type':'mime_type',
+    'content-type':'mime_type',
     'date':'send_date',
     'expect':'expect',
     'from':'username',
     'host':'host',
-    'user-agent':'sender'
+    'user-agent':'sender',
+    'if-modified-since':'if_modified_since',
+    'if-none-match':'if_no_match'
     }
     
 response_header_map = {
@@ -163,12 +191,14 @@ response_header_map = {
     'data_range':'Content-Range',
     'mime_type':'Content-Type',
     'send_date':'Date',
-    'data_uid':'ETag',
+    #'data_uid':'ETag',
     'data_expires':'Expires',
     'last_modified':'Last-Modified',
     'new_location':'Location',
     'application_string':'Server',
-    'data_encoding':'Transfer-Encoding'
+    'data_encoding':'Transfer-Encoding',
+    'set_cookie':'Set-Cookie',
+    #'response_id':'ETag'
     }
     
 status_map = {

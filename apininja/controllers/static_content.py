@@ -1,8 +1,7 @@
-﻿#from .controller import Controller, verbs
-from apininja.controllers import Controller
+﻿from apininja.controllers import Controller
 from apininja.log import log
 from apininja.actions import *
-import os, time
+import os, time, datetime
 import mimetypes
 import email.utils
 
@@ -10,7 +9,7 @@ if not mimetypes.inited:
     mimetypes.init()
 
 
-class Static_ContentController(Controller):
+class StaticContentController(Controller):
     content_folder = 'content'
     cache = 'max-age=3600'
     allow_anonymous = True
@@ -38,17 +37,11 @@ class Static_ContentController(Controller):
             pass
             
         self.response.cache_control = self.cache
-        
-        m_time = os.path.getmtime(content_path)
-        self.response.last_modified =m_time# email.utils.formatdate(m_time)
-        # if 'If-Modified-Since' in self.request.variables:
-            # parsed=email.utils.parsedate(self.request.variables['If-Modified-Since'])
-            # last_modified = time.mktime(parsed)
-            # if last_modified > m_time:
-                # self.response.data = None
-                # self.response.not_modified()
-        
+
         return content_path
+        
+    def get_last_modified(self,resource):
+        return datetime.datetime.utcfromtimestamp(os.path.getmtime(resource))
         
     def get_allowed_actions(self,resource):
         if os.path.isdir(resource):

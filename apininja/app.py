@@ -1,4 +1,5 @@
-﻿from .log import *
+﻿import __main__
+from .log import *
 log.info('Importing namespaces and discovering registered types')
 
 from .helpers import *
@@ -10,22 +11,28 @@ from .endpoints import EndpointMetaclass
 from .data.adapters import AdapterMetaclass
 from .data.database import DatabaseMetaclass, Database
 from .security import User, Users
-import os, importlib
+import os, importlib, collections, imp
 import time
 import json
 from copy import copy, deepcopy
 from .parser import CommandParser
 
+app_root =  os.getcwd()
 my_path = os.path.dirname(__file__)
 for f in os.listdir(my_path):
     if os.path.isdir(f):
         importlib.import_module(__package__+'.'+f)
 
-
-for d in os.listdir(my_path):
-    if d == 'bootstrap.py': continue
-    if os.path.isdir(d):
-        importlib.import_module(__package__+'.'+d)
+# import __addons__ directory for project
+# 
+# addons = os.path.join(app_root,'__addons__')
+from __addons__ import *
+# print(__addons__.__all__)
+# if os.path.exists(addons):
+    # for f in os.listdir(addons):
+        # if f[-3:] == '.py' and f!='__init__.py':
+            # importlib.import_module('__addons__.'+f)
+           # # imp.load_source(f[:-3],os.path.join(addons,f))
 
 class ApiApplication(Configurable):
     login_path = '/login'
@@ -36,10 +43,10 @@ class ApiApplication(Configurable):
         self.parser = CommandParser(self)
         self.running = False
         
-        self.app_root = os.getcwd()
+        self.app_root =app_root
         self.endpoints = {}
         self.routes = {}
-        self.controllers = copy(ControllerMetaclass.known_types)
+        self.controllers = {}#copy(ControllerMetaclass.known_types)
         self.controller_config ={}
         self.data_adapters = {}
         self.database_config = {}
@@ -127,6 +134,7 @@ class ApiApplication(Configurable):
             self.endpoints[name] = endpoint
         
     def setup_routes(self, config):
+        routes = collections.OrderedDict()
         for r in config:
             try:
                 name = r['name']
@@ -137,7 +145,8 @@ class ApiApplication(Configurable):
                 raise ValueError('Route names must be unique')
                 
             route = Route(r)
-            self.routes[name] = route
+            routes[name] = route
+        self.routes = routes
             
     def setup_controllers(self,config):
         log.info('Setting up Controllers')
@@ -164,18 +173,21 @@ class ApiApplication(Configurable):
         
     def map_route(self,request):
         for r in self.routes.values():
-            if r.is_match(request):
-                return r
+            v = r.match(request)
+            if v is not None:
+                return r, v
+        return None, None
                 
     def get_controller(self,name, context):
+        cls = None
         if name:
             try:
                 cls= self.controllers[name]
             except KeyError:
                 try:
-                    cls = controllers[name]
+                    cls =  ControllerMetaclass.known_types[name]
                 except KeyError:
-                    cls = None
+                    pass
         if cls:
             config = None
             try:
@@ -256,3 +268,7 @@ class ApiApplication(Configurable):
             
         db = db_type(self,adapter,config,context)
         return db
+        
+if __name__ == '__main__':
+    app = ApiApplication()
+    app.run()

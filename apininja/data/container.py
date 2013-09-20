@@ -1,12 +1,14 @@
 ﻿from .dataobject import *
 from apininja.actions import *
 from apininja.helpers import *
+from datetime import datetime
 
 @known_type('container')
 class DataContainer(DataObject):
-    item_type= 'object'
+    item_type= attribute('item_type',default='object')
     item_data_type = DataObject
-    #name = attribute('name',type='str',readonly=True)
+    name = attribute('name',type='str',readonly=True)
+    
 
     def __init__(self,parent,data,context):
         super().__init__(parent,data,context)
@@ -78,9 +80,15 @@ class DataContainer(DataObject):
     def create(self,obj):
         if isinstance(obj,dict):
             data = obj
-        else:
+        elif isinstance(obj,DataObject):
             data = obj._data
-            
+        else:
+            raise TypeError('Expected DataObject')
+        
+        now = datetime.utcnow()
+        data['last_updated'] = now
+        data['created']=now
+        
         cmd = self.database.make_command(CREATE,self,data=data)
         result = self.data_adapter.execute_command(cmd)
         
@@ -94,8 +102,13 @@ class DataContainer(DataObject):
     def update(self,obj):
         if isinstance(obj,dict):
             data = obj
-        else:
+        elif isinstance(obj,DataObject):
             data = obj._data
+        else:
+            raise TypeError('Expected DataObject')
+            
+        now = datetime.utcnow()
+        data['last_updated'] = now
             
         cmd = self.database.make_command(UPDATE,self,data=data)
         result = self.data_adapter.execute_command(cmd)
@@ -110,8 +123,10 @@ class DataContainer(DataObject):
     def delete(self,obj):
         if isinstance(obj,dict):
             data = obj
-        else:
+        elif isinstance(obj,DataObject):
             data = obj._data
+        else:
+            raise TypeError('Expected DataObject')
             
         cmd = self.database.make_command(DELETE,self,data=obj)
         result = self.data_adapter.execute_command(cmd)
@@ -127,11 +142,13 @@ class DataContainer(DataObject):
         return [GET,UPDATE,DELETE]
        
     def get_id_query(self,id):
-        return {'name':id}
+        return {'_id':id}
         
-# @known_type('system')
-# class SystemDataContainer(DataContainer):
-    # item_type = DataContainer
+@known_type('system_container')
+class SystemDataContainer(DataContainer):
+    item_type= attribute('item_type',default='container')
+    item_data_type = DataObject
     
-    # def make_item(self,data):
-        # return self.item_type(self.database,config=data,context=self.context)
+    def get_id_query(self,id):
+        return {'name':id}
+    

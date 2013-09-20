@@ -1,4 +1,4 @@
-﻿import os, importlib
+﻿import os, importlib, re, random, string
 from apininja.log import log
 
 class Configurable():
@@ -32,6 +32,16 @@ class Configurable():
 def islambda(obj):
     return isinstance(obj, type(lambda: None)) and obj.__name__ == '<lambda>'
     
+first_cap_re = re.compile('(.)([A-Z][a-z]+)')
+all_cap_re = re.compile('([a-z0-9])([A-Z])')
+def convert_camel_case(text):
+    s1 = first_cap_re.sub(r'\1_\2', text)
+    return all_cap_re.sub(r'\1_\2', s1).lower()
+    
+def random_string(length):
+    pool = string.ascii_letters+string.digits
+    return ''.join(random.choice(pool) for x in range(length))
+    
 class SelfRegisteringType(type):
     extension = ''
     known_types = None
@@ -42,7 +52,7 @@ class SelfRegisteringType(type):
         
         cls = type.__new__(meta,name,bases,dict)
         if name != meta.extension:
-            n = name.replace(meta.extension,'').lower()
+            n = convert_camel_case(name.replace(meta.extension,''))
             cls.name = n
             log.info('Found %s Type %s',meta.extension,n)
             meta.known_types[n]= cls

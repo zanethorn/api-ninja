@@ -1,6 +1,8 @@
 ﻿import traceback
-import hashlib, base64
-from .log import log
+import hashlib, base64, hmac
+from apininja.log import log
+from apininja.data.formatters import *
+from apininja.data import *
 
 class StopExecutionException(Exception):
     pass
@@ -14,10 +16,12 @@ class RequestContext():
     version=''
     command = ''
     content_type= None
-    data = None
     query = {}
     options = {}
+    cookies = {}
     
+    data_length = 0
+    compression = None
     allowed_types = []
     allowed_charsets = []
     allowed_compression = []
@@ -25,7 +29,6 @@ class RequestContext():
     authorization = None
     cache_control = None
     connection = None
-    data_length = 0
     data_hash = None
     mime_type = None
     send_date = None
@@ -33,12 +36,46 @@ class RequestContext():
     username = None
     host = None
     sender = None
+    if_modified_since = None
+    if_no_match = None
     
     def __init__(self,endpoint):
         self.endpoint = endpoint
         self.protocol = endpoint.protocol
         self.app = endpoint.app
+        self._data = None
+    
+    @property
+    def data(self):
+        if self._data:
+            return self._data
+        if not self.data_length:
+            return None
         
+        if not self._data and self.data_length:
+            raw = self._dstream.read(self.data_length)
+            
+            if self.compression:
+                log.debug('decompressing data stream with %s',self.compression)
+                raw = decompress_data(self.context,raw)
+                
+            formatter = get_formatter(self.context,False)
+            if formatter:
+                data = formatter.decode(raw)
+            else:
+                data = raw
+                
+            if isinstance(data,dict):
+                try:
+                    t = data['_t']
+                    data_type = find_type(t)
+                    data = data_type(data = data)
+                except KeyError:
+                    pass
+            self._data = data
+            return data
+        return None
+            
 class ResponseContext():
     status = 0
     message = ''
@@ -46,17 +83,16 @@ class ResponseContext():
     allow_actions = []
     cache_control = None
     connection = None
-    compression = None
+    
     language = None
     alternate_location = None
-    mime_type = 'application/octet-stream'
+    mime_type = ''
     send_date = None
-    data_uid = None
     data_expires = None
     last_modified = None
     new_location = None
     application_string = None
-    data_encoding = None
+    cookies = {}
     
     def __init__(self,endpoint):
         self.endpoint = endpoint
@@ -64,32 +100,75 @@ class ResponseContext():
         self.app = endpoint.app
         self._data = None
         self._data_range = None
+        self._data_stream = None
+        self._compression = None
+        self._data_encoding = None
         self.application_string = self.app.application_string
-    
+       
+    @property
+    def data_stream(self):
+        if self._data_stream:
+            return self._data_stream
+            
+        if not self._data:
+            return None
+            
+        if isinstance(self.data,bytes):
+            self._data_stream = self.data
+        else:
+            formatter = get_formatter(self.context,True)
+            if formatter:
+                self._data_stream = formatter.encode(self.data)
+            else:
+                self.not_acceptable()
+                
+        self._data_stream, self._compression = compress_data(self.context,self._data_stream)
+        if self._data_range:
+            self._data_stream = self._data_stream[self._data_range]
+        
+        return self._data_stream
         
     @property
     def data(self):
-        if self._data_range:
-            return self._data[self._data_range]
         return self._data
         
     @data.setter
     def data(self,value):
         self._data = value
+        self._data_stream = None
+        
+    @property
+    def compression(self):
+        return self._compression
+        
+    @property
+    def data_encoding(self):
+        return self._data_encoding
         
     @property
     def data_length(self):
-        if not self._data:
+        ds = self.data_stream
+        if not ds:
             return None
-        return len(self.data)
+        return len(ds)
         
     @property
     def data_hash(self):
-        if not self._data:
+        ds = self.data_stream
+        if not ds:
             return None
         hasher = hashlib.md5()
-        hasher.update(self.data)
-        return base64.b64encode(hasher.digest())
+        hasher.update(ds)
+        return str(base64.b64encode(hasher.digest()),'latin-1')
+        
+    # @property
+    # def response_id(self):
+        # ds = self.data_stream
+        # if not ds:
+            # return None
+        # hasher = hmac.new(bytes(self.app.hash_key,'utf-8'))
+        # hasher.update(ds)
+        # return str(base64.b64encode(hasher.digest()),'latin-1')
         
     @property
     def data_range(self):
@@ -98,8 +177,17 @@ class ResponseContext():
         return '%d-%d'%(self._data_range.start, self._data_range.stop)
         
     @data_range.setter
-    def set_data_range(self,value):
+    def data_range(self,value):
         self._data_range = value
+        self._data_stream = None
+        if value:
+            self._data_encoding = 'chuncked'
+        else:
+            self._data_encoding = None
+            
+    @property
+    def set_cookie(self):
+        return ';'.join(map(lambda i: '%s=%s'%i,self.cookies.items()))
 
     def not_found(self, message=''):
         self.send_error(self.endpoint.STATUS_NOT_FOUND,message)
@@ -145,6 +233,7 @@ class ResponseContext():
         
 
 class ExecutionContext():
+    endpoint = None
     controller = None
     action = ''
     app = None
@@ -159,3 +248,4 @@ class ExecutionContext():
         response.context = self
         
         self.app = request.app
+        

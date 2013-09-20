@@ -1,5 +1,5 @@
 import os, importlib
-import gzip, zlib, bz2, lzma
+
 #from .controller import *
 from apininja.log import log
 from apininja.helpers import *
@@ -25,7 +25,6 @@ class Controller(Configurable, metaclass=ControllerMetaclass):
         super().__init__(config)
         self.app = app
         self.context = context
-        self.name = type(self).__name__.replace('Controller','')
         
     @property
     def context(self):
@@ -45,16 +44,26 @@ class Controller(Configurable, metaclass=ControllerMetaclass):
         
     def execute(self):
         resource = self.locate_resource(self.request.path)
+        can_access = self.can_access_resource(resource)
+        if not can_access:
+            self.response.permission_error()
+        
         self.response.allow_actions = self.get_allowed_actions(resource)
+        last_modified = self.get_last_modified(resource)
+        self.response.last_modified = last_modified
+        
+        if self.request.if_modified_since and last_modified:
+            if last_modified <= self.request.if_modified_since:
+                self.response.not_modified()
         
         method = self.find_method()
 
         #args, kwargs = self.map_parameters(method)
         result = method(resource)
-        
-        result = self.format_content(result)
-        self.response.data = self.compress_content(result)
         return result
+        
+    def can_access_resource(self,resource):
+        return True
         
     def locate_resource(self, path):
         raise NotImplementedError()
@@ -62,17 +71,10 @@ class Controller(Configurable, metaclass=ControllerMetaclass):
     def get_allowed_actions(self,resource):
         raise NotImplementedError()
         
-    def compress_content(self,data):
-        if self.request.allowed_compression:
-            for ctype in self.request.allowed_compression:
-                try:
-                    compressor = compressors[ctype]
-                    encoded = compressor.encode(data)
-                    self.response.compression = ctype
-                    return encoded
-                except KeyError:
-                    pass
-        return data
+    def get_last_modified(self,resource):
+        return None
+        
+    
         
     def format_content(self,content):
         return content
@@ -83,37 +85,6 @@ class Controller(Configurable, metaclass=ControllerMetaclass):
         except AttributeError:
             self.context.response.action_not_allowed()
 
-    # def map_parameters(self, method):
-        # variables = self.context.request.variables
-        # spec = inspect.getfullargspec(method)
-        # used = []
-        # args = ()
-        # kwargs = {}
-        
-        # for a in spec.args[1:]:
-            # # skip the "self" argument since we are bound to a class
-            # args += (variables[a], )
-            # used.append(a)
-
-        # if spec.varargs:
-            # args += tuple(variables[spec.varargs])
-            # used.append(spec.varargs)
-
-        # for kw in spec.kwonlyargs:
-            # try:
-                # kwargs[kw] = variables[kw]
-                # used.append(kw)
-            # except KeyError:
-                # pass
-
-        # # pass remaining parameters to kwargs, if allowed
-        # if spec.varkw:
-            # for k,v in variables.items():
-                # if k not in used:
-                    # kwargs[k] = v
-        # return (args, kwargs)
-            
-            
     def list(self, resource):
         self.response.action_not_allowed()
         
@@ -129,12 +100,7 @@ class Controller(Configurable, metaclass=ControllerMetaclass):
     def delete(self, resource):
         self.response.action_not_allowed()
 
-compressors = {
-    'lzma':lzma,
-    'gzip':gzip,
-    'deflate':zlib,
-    'bzip2':bz2
-    }
+
         
 # import remaining files in package to initialize them
 my_path = os.path.dirname(__file__)

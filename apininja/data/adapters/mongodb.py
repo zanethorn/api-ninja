@@ -34,6 +34,12 @@ try:
             client.close()
             
         def format_query(self, query, **options):
+            for k,v in query.items():
+                if isinstance(v,str):
+                    try:
+                        query[k] = ObjectId(v)
+                    except:
+                        pass
             return query
 
         def execute_command(self,command):

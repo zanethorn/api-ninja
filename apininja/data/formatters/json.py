@@ -1,4 +1,5 @@
 from apininja.data.formatters import Formatter
+from apininja.data import *
 import json
 from datetime import datetime
 
@@ -14,6 +15,8 @@ def handle_default(item):
         return item.isoformat()
     elif isinstance(item,DBRef):
         return {'collection':item.collection,'id':item.id,'_t':'ref'}
+    elif isinstance(item,DataObject):
+        return item._data
     else:
         try:
             return str(item)
@@ -28,5 +31,4 @@ class JsonFormatter(Formatter):
         return bytes(json.dumps(data,default=handle_default),'utf-8')
 
     def decode(self,data,**kwargs):
-        print('raw data',data)
-        return json.loads(data)
+        return json.loads(str(data,'utf-8'))

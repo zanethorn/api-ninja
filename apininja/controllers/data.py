@@ -26,12 +26,24 @@ class DataController(Controller):
             return [GET,UPDATE,DELETE]
         
     def locate_resource(self,path):
-        working = self.db
+        working = self.db.system_container
         for p in path:
             working = working.get(p)
             if not working:
                 self.response.not_found()
         return working
+        
+    def can_access_resource(self,resource):
+        return True
+        
+    def get_last_modified(self,resource):
+        if not resource:
+            return None
+            
+        if isinstance(resource,list):
+            return max(resource,key=lambda i: i.last_updated).last_updated
+        else:
+            return resource.last_updated
         
     def get(self,resource):
         if isinstance(resource,DataContainer):
@@ -39,7 +51,9 @@ class DataController(Controller):
         return resource
     
     def list(self, resource):
+        log.debug('Running list query %s, %s',self.request.query,self.request.options)
         result = list(resource.list(self.request.query,self.request.options))
+        self.response.last_modified = self.get_last_modified(result)
         return result
         
     def create(self, resource):
@@ -58,7 +72,8 @@ class DataController(Controller):
             if not self.db:
                 self.response.internal_error('Database \'%s\' is not configured!'%self.database)
             result = super().execute()
-            
+            self.response.cache_control = 'no-cache'
+
             return result
         finally:
             if self.db:
@@ -81,18 +96,4 @@ class DataController(Controller):
         formatter = fcls(self.context)
         return formatter.encode(content)
 
-    def get_formatter(self):
-        types = FormatterMetaclass.known_types.values()
-        log.debug('finding formatter in %s',self.request.allowed_types)
-        if 'format' in self.context.variables:
-            format = self.context.variables['format']
-            for f in types:
-                if f.format == format:
-                    self.response.mime_type = format
-                    return f
-                    
-        for f in types:
-            for t in f.mime_types:
-                if t in self.request.allowed_types:
-                    self.response.mime_type = t
-                    return f
+    
