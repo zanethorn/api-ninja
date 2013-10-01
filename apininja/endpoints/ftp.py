@@ -4,17 +4,26 @@ from .tcp import TcpEndpoint
 from copy import deepcopy
 import http.client, urllib.parse
 import io, datetime, gzip, zlib
-import email.utils
+import email.utils, platform
 import traceback
+from apininja.data.formatters.ftp import *
 
 class FtpEndpoint(TcpEndpoint):
     max_request_length = 65536
+    default_formatter = FtpFormatter
+    
+    action_map= {
+        'PWD':LIST,
+        'LIST':LIST
+        }
     
     #STATUS_SUCCESS = 200
     STATUS_LOGGED_IN = 230
     STATUS_WAIT_FOR_PASSWORD = 331
     STATUS_NOT_FOUND = 400
+    STATUS_INTERNAL_ERROR = 451
     STATUS_UNAUTHORIZED =530
+    STATUS_NOT_IMPLEMENTED = 502
     
     
     def handle_request(self,connection,client_addr):
@@ -48,7 +57,10 @@ class FtpEndpoint(TcpEndpoint):
         if command == 'QUIT':
             raise SystemExit()
         elif command == 'SYST':
-            response.send_error(215,'UNIX Type: L8')
+            t = 'UNIX Type: L8'
+            if platform.system() == 'Windows':
+                t = 'Windows_NT'
+            response.send_error(215,t)
         elif command == 'TYPE':
             context.ftp_mode=request.path[0]
             response.send_error(200, 'Binary mode.')
@@ -69,17 +81,22 @@ class FtpEndpoint(TcpEndpoint):
         if command == 'PASS':
             context.user = 1
             response.send_error(self.STATUS_LOGGED_IN,'OK.')
-            
+    
+    def get_success_status(self,context):
+        if context.request.command == 'PWD':
+            context.response.send_error(257,'/'+context.request.path)
+        return self.STATUS_SUCCESS
             
     def format_response(self,context):
         request = context.request
         response = context.response
 
         out_buffer = io.BytesIO()
+        
+        
         response_line = '%d %s\r\n'%(response.status, response.message)
         response_line = response_line.encode('latin-1','strict')
         out_buffer.write(response_line)
-        #traceback.print_stack(limit=2)
         log.debug('returning response %s'%response_line)
 
         response._dstream.write(out_buffer.getbuffer())

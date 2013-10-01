@@ -24,6 +24,9 @@ class TcpEndpoint(Endpoint):
             self.close_connection(connection)
         
     def close_connection(self,connection):
-        connection.close()
-        pass
+        log.debug('Closing connection')
+        try:
+            connection.close()
+        except:
+            log.error('Unable to terminate connection!')
     

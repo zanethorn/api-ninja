@@ -16,7 +16,7 @@ def handle_default(item):
     elif isinstance(item,DBRef):
         return {'collection':item.collection,'id':item.id,'_t':'ref'}
     elif isinstance(item,DataObject):
-        return item._data
+        return item.to_dict()
     else:
         try:
             return str(item)

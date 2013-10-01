@@ -9,6 +9,12 @@ class AdapterMetaclass(SelfRegisteringType):
 class DataAdapter(Configurable, metaclass=AdapterMetaclass):
 
     key_type = int
+    
+    def parse_key(self, s):
+        try:
+            return self.key_type(s)
+        except:
+            return s
 
     def connect(self,connection):
         raise NotImplementedError() 

@@ -63,7 +63,9 @@ class Controller(Configurable, metaclass=ControllerMetaclass):
         return result
         
     def can_access_resource(self,resource):
-        return True
+        if  self.allow_anonymous or self.context.user:
+            return True
+        return False
         
     def locate_resource(self, path):
         raise NotImplementedError()
@@ -73,8 +75,6 @@ class Controller(Configurable, metaclass=ControllerMetaclass):
         
     def get_last_modified(self,resource):
         return None
-        
-    
         
     def format_content(self,content):
         return content

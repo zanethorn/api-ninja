@@ -6,13 +6,22 @@ log.info('Initializing apininja.data.formatters namespace')
 class FormatterMetaclass(SelfRegisteringType):
     extension = 'Formatter'
 
-class Formatter(metaclass = FormatterMetaclass):
+class Formatter(Configurable,metaclass = FormatterMetaclass):
     mime_types=[]
     format = ''
     
-    def __init__(self, context):
+    def __init__(self, context, config):
+        super().__init__(config)
         self.context = context
         self.app = context.app
+        
+    @property
+    def request(self):
+        return self.context.request
+        
+    @property
+    def response(self):
+        return self.context.response
 
     def encode(self, data):
         raise NotImplementedError()
@@ -26,33 +35,9 @@ def map_format(format):
             return t.mime_types
     return None
     
-def get_formatter(context, response=True):
-    types = FormatterMetaclass.known_types.values()
-    formats = []
-    if response:
-        if context.response.mime_type:
-            formats = [ context.response.mime_type ]
-        else:
-            try:
-                f = context.variables['format']
-                if f:
-                    formats = map_format(f)
-            except KeyError:
-                pass
-            
-            if not formats:
-                formats = context.request.allowed_types
-    else:
-        formats = [ context.request.mime_type ]        
+
     
-    log.debug('finding formatter for %s',formats)
-    for f in types:
-        for t in f.mime_types:
-            if t in formats:
-                if response:
-                    context.response.mime_type = t
-                return f(context)
-    return None
+    
     
 def compress_data(context,data):
     if context.request.allowed_compression:
@@ -60,7 +45,7 @@ def compress_data(context,data):
             try:
                 compressor = compressors[ctype]
                 encoded = compressor(data)
-                log.debug('Compressing data with %s',ctype)
+                log.debug('Compressed data with %s',ctype)
                 return encoded, ctype
             except KeyError:
                 pass

@@ -31,7 +31,7 @@ class LoginController(Controller):
         user, token = users.login(email,password)
         log.debug('found user %s',user)
         data = {'user':user, 'token':token}
-        self.response.cookies['$token'] = token.value
+        self.response.variables['token'] = token.value
         return data
         
     def get(self, resource):

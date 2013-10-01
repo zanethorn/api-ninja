@@ -3,7 +3,7 @@ import traceback, inspect
 from apininja.helpers import *
 from apininja.log import log
 from apininja.context import *
-
+from apininja.security import root, unauthorized
 log.info('Initializing apininja.endpoints namespace')
 
 
@@ -17,6 +17,8 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
     protocol = ''
     in_buffer_size = -1
     out_buffer_size = 0
+    action_map = {}
+    default_formatter = None
     
     # status constants, override for specific protocols
     STATUS_SUCCESS = 0
@@ -28,6 +30,7 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
     STATUS_BAD_REQUEST =0
     STATUS_INTERNAL_ERROR =0
     STATUS_NOT_MODIFIED =0
+    STATUS_NOT_IMPLEMENTED = 0
 
     def __init__(self,app, config=None):
         if self.__class__ == Endpoint:
@@ -74,10 +77,10 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
     def accept_connection(self):
         return self.socket.accept()
         
-    def finalize_connection(self,request):
-        raise NotImplementedError()
+    def finalize_connection(self,connection):
+        self.close_connection(connection)
         
-    def close_connection(self,request):
+    def close_connection(self,connection):
         raise NotImplementedError()
         
     def close_service(self):
@@ -116,14 +119,16 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
             log.info('%s handling request for %s:%s'%(self.name,context.action,request.path))
             
             if not context.user:
-                self.find_user(context)
+                context.user = self.find_user(context)
+            if not context.user:
+                context.user = unauthorized
             
             context.route = self.find_route(context)
             context.controller = self.find_controller(context)
             
             context.response.data  = context.controller.execute()
             if not context.response.status:  
-                context.response.status = self.STATUS_SUCCESS
+                context.response.status = self.get_success_status(context)
 
             if response.status == 0:
                 raise RuntimeError('Success Status not implemented!')
@@ -134,7 +139,10 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
         except Exception as ex:
             log.error('Endpoint %s encoutered error %s',self.name, ex)
             traceback.print_exc()
-            response.status = 500
+            if isinstance(ex,NotImplementedError):
+                response.status = self.STATUS_NOT_IMPLEMENTED
+            else:
+                response.status = self.STATUS_INTERNAL_ERROR
             response.message = str(ex)
             response.data = None
         finally:
@@ -148,6 +156,9 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
                     pass
             request._dstream.close()
             response._dstream.close()
+            
+    def get_success_status(self,context):
+        return self.STATUS_SUCCESS
             
     def find_user(self,context):
         raise NotImplementedError()
@@ -166,7 +177,7 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
         log.debug('%s using route %s'%(self.name,route.name))
         context.route = route
         #route_variables = route.get_variables(context.request.full_path)
-        context.variables.update(variables)
+        context.request.variables.update(variables)
         if 'path' in variables:
             context.request.path = variables['path']
         return route
@@ -188,7 +199,11 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
         return controller
         
     def map_action(self,context):
-        raise NotImplementedError()
+        log.debug('%s finding action for \'%s\'',self.name,context.request.command)
+        try:
+            return self.action_map[context.request.command]
+        except KeyError:
+            context.response.action_not_allowed()
             
     def handle_error(self,request,client_addr,error):
         tb = traceback.format_exc()

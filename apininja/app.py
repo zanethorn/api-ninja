@@ -9,8 +9,10 @@ from .server import SecureServer
 from .controllers import ControllerMetaclass
 from .endpoints import EndpointMetaclass
 from .data.adapters import AdapterMetaclass
+from .data.formatters import FormatterMetaclass
 from .data.database import DatabaseMetaclass, Database
 from .security import User, Users
+from .plugins import *
 import os, importlib, collections, imp
 import time
 import json
@@ -23,36 +25,30 @@ for f in os.listdir(my_path):
     if os.path.isdir(f):
         importlib.import_module(__package__+'.'+f)
 
-# import __addons__ directory for project
-# 
-# addons = os.path.join(app_root,'__addons__')
 from __addons__ import *
-# print(__addons__.__all__)
-# if os.path.exists(addons):
-    # for f in os.listdir(addons):
-        # if f[-3:] == '.py' and f!='__init__.py':
-            # importlib.import_module('__addons__.'+f)
-           # # imp.load_source(f[:-3],os.path.join(addons,f))
 
 class ApiApplication(Configurable):
     login_path = '/login'
     application_string = 'ApiNinja v. 0.1 (dev)'
-
+    
     def __init__(self):
         super().__init__()
         self.parser = CommandParser(self)
         self.running = False
         
         self.app_root =app_root
+        
         self.endpoints = {}
         self.routes = {}
         self.controllers = {}#copy(ControllerMetaclass.known_types)
         self.controller_config ={}
         self.data_adapters = {}
         self.database_config = {}
+        self.formatter_config={}
+        self.plugins = []
         
         self.configure()
-        
+
     def configure(self):
         log.info('Configuring Application Instance')
         path = os.path.join(self.app_root,'config.json')
@@ -63,6 +59,14 @@ class ApiApplication(Configurable):
             config = json.load(file)
         finally:
             file.close()
+            
+        # we need to configure plugins first due to type-lookup issues
+        try:
+            plugins = config['plugins']
+            self.setup_plugins(plugins)
+        except KeyError:
+            pass
+            
         self._configure(config)
         
     def _handle_config_list(self,name,value):
@@ -76,8 +80,10 @@ class ApiApplication(Configurable):
             self.setup_databases(value)
         elif name == 'adapters':
             self.setup_adapters(value)
+        # elif name == 'plugins':
+            # pass # plugins should already be registered
         else:
-            raise AttributeError(name)
+            super()._handle_config_list(name,value)
         
     def run(self):
         log.info('Starting Application Server')
@@ -108,8 +114,19 @@ class ApiApplication(Configurable):
         self.shutdown()
         self.run()
         
+    def setup_plugins(self, plugins):
+        log.info('Registering plugins:')
+        for name, config in plugins.items():
+            log.info('Loading plugin %s'%name)
+            plugin = importlib.import_module('%s.plugins.%s'%(__package__,name))
+            try:
+                load = getattr(plugin,'load')
+                load(config)
+            except AttributeError:
+                pass
+        
     def setup_endpoints(self, config):
-        log.info('Setting up Endpoints')
+        log.info('Setting up Endpoints:')
         for c in config:
             try:
                 name = c['name']
@@ -268,6 +285,46 @@ class ApiApplication(Configurable):
             
         db = db_type(self,adapter,config,context)
         return db
+        
+    def get_formatter(self,context, response=True):
+        types = FormatterMetaclass.known_types.values()
+        formats = []
+        if response:
+            if context.response.mime_type:
+                formats = [ context.response.mime_type ]
+            else:
+                try:
+                    f = context.request.variables['format']
+                    if f:
+                        formats = map_format(f)
+                except KeyError:
+                    pass
+                
+                if not formats:
+                    formats = context.request.allowed_types
+        else:
+            formats = [ context.request.mime_type ]        
+        
+        log.debug('Finding formatter for %s',formats)
+        format_type = None
+        for t in formats:
+            for f in types:
+                if t in f.mime_types:
+                    format_type = f
+                    break
+            if format_type:
+                break
+        if not format_type:
+            format_type= context.endpoint.default_formatter
+        config = None
+        try:
+            config = self.formatter_config[format_type.name]
+        except KeyError:
+            pass
+        if response:
+            context.response.mime_type = format_type.mime_types[0]
+        formatter = format_type(context,config)
+        return formatter
         
 if __name__ == '__main__':
     app = ApiApplication()

@@ -28,7 +28,9 @@ class DataController(Controller):
     def locate_resource(self,path):
         working = self.db.system_container
         for p in path:
+            log.debug('Looking for data fragment %s',p)
             working = working.get(p)
+            log.debug('Found item of type %s',type(working))
             if not working:
                 self.response.not_found()
         return working
@@ -51,19 +53,28 @@ class DataController(Controller):
         return resource
     
     def list(self, resource):
-        log.debug('Running list query %s, %s',self.request.query,self.request.options)
+        log.debug('Running list query %s, %s on %s', self.request.query, self.request.options , resource)
         result = list(resource.list(self.request.query,self.request.options))
         self.response.last_modified = self.get_last_modified(result)
         return result
         
     def create(self, resource):
-        pass
+        data = self.context.request.data
+        container = resource
+        data = container.create(data)
+        return data
     
     def update(self, resource):
-        pass
+        data = self.context.request.data
+        resource = resource.parent
+        data = resource.update(data)
+        return data
         
     def delete(self, resource):
-        pass
+        data = resource
+        container = data.parent
+        container.delete(data)
+        return None
     
     def execute(self):
         self.db = None

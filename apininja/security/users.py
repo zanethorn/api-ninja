@@ -14,17 +14,18 @@ def generate_salt():
 
 @known_type('user')
 class User(DataObject):
-    email=attribute('email')
-    password = attribute('password')
-    last_login = attribute('last_login')
-    last_activity = attribute('last_activity')
-    failed_logins = attribute('failed_logins', default=0)
-    last_failed_login = attribute('last_failed_login')
-    locked = attribute('locked')
-    salt = attribute('salt')
-    owner_id = attribute('owner_id')
-    roles = attribute('roles',default=[])
-    tokens = attribute('tokens',default=[])
+    email=attribute()
+    name=attribute()
+    password = attribute('password', server_only = True)
+    last_login = attribute('last_login', server_only = True)
+    last_activity = attribute('last_activity', server_only = True)
+    failed_logins = attribute('failed_logins', default=0, server_only = True)
+    last_failed_login = attribute('last_failed_login', server_only = True)
+    locked = attribute('locked', server_only = True)
+    salt = attribute('salt', server_only = True)
+    owner_id = attribute('owner_id', server_only = True)
+    roles = attribute('roles',default=[], server_only = True)
+    tokens = attribute('tokens',default=[], server_only = True)
     
     def change_password(self,password):
         salt = generate_salt()
@@ -44,6 +45,8 @@ class Login(DataObject):
     
 @known_type('users')
 class Users(DataContainer):
+    item_type = 'user'
+    
     def login(self,email,password):
         result = self.get(email)
         if result is None:
@@ -57,9 +60,6 @@ class Users(DataContainer):
         result['last_updated'] = now
         new_hash = hash_password(password,salt)
         if  new_hash !=  hashed:
-           print('login failed')
-           print(hashed)
-           print(new_hash)
            result['failed_logins'] += 1
            result['last_failed_login'] = now
            if result['failed_logins'] >= int(config['RULES']['failed_logins']):
@@ -70,7 +70,6 @@ class Users(DataContainer):
 
         salt = generate_salt()
         hashed = hash_password(password,salt)
-        print('login success')
         result['failed_logins'] =0
         result['last_login'] = now
         result['salt'] = salt
@@ -94,12 +93,29 @@ class Users(DataContainer):
         token = AccessToken(parent=user,data=token_data,context=self.context)
         return user, token
         
+    def list(self,query={},limit=None,skip=0,select=None,**options):
+        if 'search' in query:
+            s = query['search']
+            r = re.compile('^%s'%s,re.I)#{'$regex':'^%s'%s}
+            query = { 
+                '$or':  [
+                        {'first_name':r},
+                        {'last_name':r},
+                        {'email':s}
+                    ]
+                }
+        
+        return super().list(query,limit,skip,select,**options)
+        
     def get_user_by_token(self,token):
         return self.get({'tokens':{'$elemMatch':{'value':token}}})
     
     def get_id_query(self,id):
+        if isinstance(id,dict):
+            return id
         if id == 'me':
-            return {'_id':self.context.user.id}
+            if self.context.user:
+                return {'_id':self.context.user.id}
         elif re.match(r'^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$',str(id),re.I):
             return {'email':id}
         return {'_id':id}

@@ -12,7 +12,6 @@ class DataContainer(DataObject):
 
     def __init__(self,parent,data,context):
         super().__init__(parent,data,context)
-        self._context = context
         self.item_data_type = find_type(self.item_type)
         
     def __getattr__(self,name):
@@ -49,7 +48,6 @@ class DataContainer(DataObject):
 
     def make_item(self,data):
         t= self.item_data_type
-        print(data)
         try:
             t_name = data['_t']
             t = find_type(t_name)
@@ -81,9 +79,9 @@ class DataContainer(DataObject):
         if isinstance(obj,dict):
             data = obj
         elif isinstance(obj,DataObject):
-            data = obj._data
+            data = obj.to_write_dict()
         else:
-            raise TypeError('Expected DataObject')
+            raise TypeError('Expected DataObject, got %s',type(obj).__name__)
         
         now = datetime.utcnow()
         data['last_updated'] = now
@@ -103,21 +101,26 @@ class DataContainer(DataObject):
         if isinstance(obj,dict):
             data = obj
         elif isinstance(obj,DataObject):
-            data = obj._data
+            data = obj.to_write_dict()
         else:
-            raise TypeError('Expected DataObject')
+            raise TypeError('Expected DataObject, got %s',type(obj).__name__)
             
         now = datetime.utcnow()
         data['last_updated'] = now
             
-        cmd = self.database.make_command(UPDATE,self,data=data)
+        query = self.get_id_query(data['_id'])
+        cmd = self.database.make_command(UPDATE,self,data=data, query=query)
         result = self.data_adapter.execute_command(cmd)
         
         if not result:
             result = data
-        if isinstance(result,dict):
+        if isinstance(obj,DataObject):
+            obj._data = result
+            result = obj
+        elif isinstance(result,dict):
             result = self.make_item(result)
-            
+        else:
+            raise TypeError('Could not interpret result')
         return result
         
     def delete(self,obj):
@@ -126,9 +129,10 @@ class DataContainer(DataObject):
         elif isinstance(obj,DataObject):
             data = obj._data
         else:
-            raise TypeError('Expected DataObject')
+            raise TypeError('Expected DataObject, got %s',type(obj).__name__)
             
-        cmd = self.database.make_command(DELETE,self,data=obj)
+        query = self.get_id_query(data['_id'])
+        cmd = self.database.make_command(DELETE,self,query=query)
         result = self.data_adapter.execute_command(cmd)
         
         if not result:
@@ -142,12 +146,30 @@ class DataContainer(DataObject):
         return [GET,UPDATE,DELETE]
        
     def get_id_query(self,id):
-        return {'_id':id}
+        if isinstance(id,dict):
+            return id
+        pid = self.data_adapter.parse_key(id)
+        return {'_id':pid}
         
 @known_type('system_container')
 class SystemDataContainer(DataContainer):
     item_type= attribute('item_type',default='container')
     item_data_type = DataObject
+    
+    def make_item(self,data):
+        t= self.item_data_type
+        log.debug('getting container from %s',data)
+        try:
+            t_name = data['_t']
+            t = find_type(t_name)
+        except KeyError:
+            try:
+                t_name = data['name']
+                t = find_type(t_name)
+            except KeyError:
+                pass
+        
+        return t(parent=self,data=data,context = self.context)
     
     def get_id_query(self,id):
         return {'name':id}

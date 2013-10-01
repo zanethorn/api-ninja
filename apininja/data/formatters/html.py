@@ -7,10 +7,12 @@ def get_user_attributes(item):
     attrs = get_user_attributes_orig(item)
     return list(sorted(attrs,key=lambda a:a.ui.display_order))
     
+default_template_path = 'apininja/data/formatters/template.html'
+    
 class HtmlFormatter(Formatter):
     mime_types=['text/html']
     format='html'
-    #template = open('template.html').read()
+    template_path = ''
 
     def decode(self,data,**kwargs):
         raw= urllib.parse.parse_qs(data)

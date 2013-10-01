@@ -16,16 +16,10 @@ class RequestContext():
     version=''
     command = ''
     content_type= None
-    query = {}
-    options = {}
-    cookies = {}
     
     data_length = 0
     compression = None
-    allowed_types = []
-    allowed_charsets = []
-    allowed_compression = []
-    allowed_language = []
+    
     authorization = None
     cache_control = None
     connection = None
@@ -44,6 +38,13 @@ class RequestContext():
         self.protocol = endpoint.protocol
         self.app = endpoint.app
         self._data = None
+        self.query = {}
+        self.options = {}
+        self.variables = {}
+        self.allowed_types = []
+        self.allowed_charsets = []
+        self.allowed_compression = []
+        self.allowed_language = []
     
     @property
     def data(self):
@@ -53,13 +54,21 @@ class RequestContext():
             return None
         
         if not self._data and self.data_length:
-            raw = self._dstream.read(self.data_length)
+            raw = bytes()#self._dstream.read(self.data_length)
+            bytes_read = 0;
+            while bytes_read <  self.data_length:
+                offset = self.data_length - bytes_read
+                d = self._dstream.read(offset)
+                if d:
+                    raw+=d
+                    bytes_read +=len(d)
             
             if self.compression:
                 log.debug('decompressing data stream with %s',self.compression)
                 raw = decompress_data(self.context,raw)
-                
-            formatter = get_formatter(self.context,False)
+            log.debug('Request body len: %d (says %s)',len(raw),self.data_length)
+            formatter = self.app.get_formatter(self.context,False)
+            log.debug('Found formatter %s',formatter)
             if formatter:
                 data = formatter.decode(raw)
             else:
@@ -69,7 +78,7 @@ class RequestContext():
                 try:
                     t = data['_t']
                     data_type = find_type(t)
-                    data = data_type(data = data)
+                    data = data_type(data = data, context=self.context)
                 except KeyError:
                     pass
             self._data = data
@@ -83,6 +92,7 @@ class ResponseContext():
     allow_actions = []
     cache_control = None
     connection = None
+    #connection_handling = 'close'
     
     language = None
     alternate_location = None
@@ -92,7 +102,7 @@ class ResponseContext():
     last_modified = None
     new_location = None
     application_string = None
-    cookies = {}
+    variables = {}
     
     def __init__(self,endpoint):
         self.endpoint = endpoint
@@ -116,13 +126,16 @@ class ResponseContext():
         if isinstance(self.data,bytes):
             self._data_stream = self.data
         else:
-            formatter = get_formatter(self.context,True)
+            formatter = self.app.get_formatter(self.context,True)
             if formatter:
+                log.debug('Encoding data with %s',type(formatter).__name__)
                 self._data_stream = formatter.encode(self.data)
             else:
                 self.not_acceptable()
-                
-        self._data_stream, self._compression = compress_data(self.context,self._data_stream)
+        
+        data, compression = compress_data(self.context,self._data_stream)
+        self._data_stream = data
+        self._compression = compression
         if self._data_range:
             self._data_stream = self._data_stream[self._data_range]
         
@@ -136,13 +149,20 @@ class ResponseContext():
     def data(self,value):
         self._data = value
         self._data_stream = None
+        self._compression = None
         
     @property
     def compression(self):
+        ds = self.data_stream
+        if not ds:
+            return None
         return self._compression
         
     @property
     def data_encoding(self):
+        ds = self.data_stream
+        if not ds:
+            return None
         return self._data_encoding
         
     @property
@@ -161,15 +181,6 @@ class ResponseContext():
         hasher.update(ds)
         return str(base64.b64encode(hasher.digest()),'latin-1')
         
-    # @property
-    # def response_id(self):
-        # ds = self.data_stream
-        # if not ds:
-            # return None
-        # hasher = hmac.new(bytes(self.app.hash_key,'utf-8'))
-        # hasher.update(ds)
-        # return str(base64.b64encode(hasher.digest()),'latin-1')
-        
     @property
     def data_range(self):
         if not self._data_range:
@@ -185,9 +196,7 @@ class ResponseContext():
         else:
             self._data_encoding = None
             
-    @property
-    def set_cookie(self):
-        return ';'.join(map(lambda i: '%s=%s'%i,self.cookies.items()))
+    
 
     def not_found(self, message=''):
         self.send_error(self.endpoint.STATUS_NOT_FOUND,message)
@@ -238,7 +247,7 @@ class ExecutionContext():
     action = ''
     app = None
     user = None
-    variables = {}
+    # variables = {}
     
     def __init__(self,request,response):
         self.request = request

@@ -6,12 +6,24 @@ from copy import deepcopy
 import http.client, urllib.parse
 import io, datetime, gzip, zlib
 import email.utils
+from apininja.data.formatters.html import *
 
 
 class HttpEndpoint(TcpEndpoint):
     secure_protocol = 'https'
     max_request_length = 65536
     user_database = ''
+    default_formatter = HtmlFormatter
+    
+    action_map= {
+        'HEAD':GET,
+        'GET':GET,
+        'POST':CREATE,
+        'PUT':UPDATE,
+        'DELETE':DELETE,
+        'OPTIONS':OPTIONS,
+        'PATCH':UPDATE
+        }
     
     STATUS_SUCCESS = 200
     STATUS_NO_CONTENT = 204
@@ -24,6 +36,7 @@ class HttpEndpoint(TcpEndpoint):
     STATUS_ACTION_NOT_ALLOWED = 405
     STATUS_NOT_ACCEPTABLE = 406
     STATUS_INTERNAL_ERROR  = 500
+    STATUS_NOT_IMPLEMENTED = 501
 
     def parse_request(self,context):
         request = context.request
@@ -45,9 +58,10 @@ class HttpEndpoint(TcpEndpoint):
             command, path, version = parts
             if version[:5] != 'HTTP/':
                 response.send_error(self.STATUS_BAD_REQUEST, "Bad request version (%r)" % version)
-        
+            if not command:
+                response.send_error(self.STATUS_BAD_REQUEST, "Bad request version (%r)" % version)
+                
         request.command = command.upper()
-        
         request.version = version
 
         try:
@@ -75,6 +89,10 @@ class HttpEndpoint(TcpEndpoint):
             request.send_date = email.utils.parsedate_to_datetime(request.send_date)
         if request.data_length:
             request.data_length = int(request.data_length)
+        try:
+            request.variables = { p[0]:p[1] for p in map(lambda c: c.strip().split('='),request.cookie.split(';'))}
+        except AttributeError:
+            pass
                 
         request.uri = urllib.parse.urlparse(path)
         request.full_path = request.uri.path.lower()
@@ -89,8 +107,8 @@ class HttpEndpoint(TcpEndpoint):
                 else:
                     request.query[name] = val
                     
-        context.variables.update(request.query)
-        context.variables.update(request.options)
+        #context.variables.update(request.query)
+        #context.variables.update(request.options)
                 
     def format_response(self,context):
         request = context.request
@@ -125,38 +143,52 @@ class HttpEndpoint(TcpEndpoint):
         out_buffer.write(response_line)
         
         # write headers
+        log.debug('Writing Headers')
         for var,header in response_header_map.items():
             value = getattr(response,var)
+            
             if value:
                 header_line = '%s: %s\r\n'%(header,value)
                 header_line = header_line.encode('latin-1','strict')
                 out_buffer.write(header_line)
+                
+        # write cookie (if any)
+        log.debug('Writing Cookies')
+        cookie = ';'.join(map(lambda i: '%s=%s'%i,response.variables.items()))
+        if cookie:
+            cookie = 'set-cookie: '+cookie
+            cookie = cookie.encode('latin-1','strict')
+            out_buffer.write(cookie)
             
         out_buffer.write('\r\n'.encode('latin-1','strict'))
         
         # write body
+        log.debug('Writing Body')
         if request.command != 'HEAD' and response.data:
             out_buffer.write(response.data_stream)
         
+        log.debug('Exporting stream')
         # dump everything to output stream
         response._dstream.write(out_buffer.getbuffer())
+        out_buffer.flush()
         out_buffer.close()
+        log.debug('Closing Buffer')
         
     def find_user(self,context):
         token = None
         try:
-            token = context.variables['token']
+            token = context.request.variables['token']
         except KeyError:
             return None
         
         db = self.app.get_database(self.user_database)
         users = db.get('users')
         user = users.get_user_by_token(token)
+        if user:
+            log.debug('Found user %s with token %s',user,token)
         return user
         
-    def map_action(self,context):
-        log.debug('%s finding action for %s',self.name,context.request.command)
-        return action_map[context.request.command]
+    
             
     
 request_header_map = {
@@ -176,13 +208,13 @@ request_header_map = {
     'host':'host',
     'user-agent':'sender',
     'if-modified-since':'if_modified_since',
-    'if-none-match':'if_no_match'
+    'if-none-match':'if_no_match',
+    'te':'compression'
     }
     
 response_header_map = {
     'allow_actions':'Allow',
     'cache_control':'Cache-Control',
-    #'connection':'Connection',
     'compression':'Content-Encoding',
     'language':'Content-Language',
     'data_length':'Content-Length',
@@ -191,14 +223,12 @@ response_header_map = {
     'data_range':'Content-Range',
     'mime_type':'Content-Type',
     'send_date':'Date',
-    #'data_uid':'ETag',
     'data_expires':'Expires',
     'last_modified':'Last-Modified',
     'new_location':'Location',
     'application_string':'Server',
     'data_encoding':'Transfer-Encoding',
-    'set_cookie':'Set-Cookie',
-    #'response_id':'ETag'
+    #'connection_handling':'Connection'
     }
     
 status_map = {
@@ -207,15 +237,7 @@ status_map = {
     'no-response':(204,'No Content')
     }
     
-action_map= {
-    'HEAD':GET,
-    'GET':GET,
-    'POST':CREATE,
-    'PUT':UPDATE,
-    'DELETE':DELETE,
-    'OPTIONS':OPTIONS,
-    'PATCH':UPDATE
-    }
+
     
 reverse_action_map= {
     LIST:'GET, HEAD',

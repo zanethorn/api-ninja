@@ -7,20 +7,8 @@ log = None
 def init():
     global log, initialized
     
-    try:
-        app_name = config['DEFAULT']['application_name']
-    except KeyError:
-        app_name = 'AnyApi'
-        
-    try:
-        level = config['LOGGING']['level']
-        try:
-            level = int(level)
-        except ValueError:
-            if level == 'debug':
-                level = logging.DEBUG
-    except KeyError:
-        level = logging.DEBUG
+    app_name = 'AnyApi'
+    level = logging.DEBUG
         
     log = logging.getLogger(app_name)
     log.setLevel(level)
@@ -34,17 +22,17 @@ def init():
         log_path = config['LOGGING']['path']
     except KeyError:
         log_path = os.getcwd() + '/logs/server.log'
-        
+      
     try:
         if os.path.exists(log_path):
             os.remove(log_path)
     except FileNotFoundError:
         pass
-    file_h = logging.FileHandler(log_path)
-    file_h.setLevel(logging.INFO)
-    file_formatter = logging.Formatter('%(levelname)s:  %(thread)d/%(threadName)s %(asctime)s - %(message)s')
-    file_h.setFormatter(file_formatter)
-    log.addHandler(file_h)
+    # file_h = logging.FileHandler(log_path)
+    # file_h.setLevel(logging.INFO)
+    # file_formatter = logging.Formatter('%(levelname)s:  %(thread)d/%(threadName)s %(asctime)s - %(message)s')
+    # file_h.setFormatter(file_formatter)
+    # log.addHandler(file_h)
     
     initialized = True
     

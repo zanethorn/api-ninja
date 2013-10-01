@@ -50,17 +50,33 @@ try:
             if command.action == LIST:
                 query  = self.format_query(command.query)
                 cursor = container.find(query)
-                return DataQuery(command.container,command.context,cursor,**command.options)
+                log.debug('mongo running find(%s)',query)
+                return DataQuery(command.container, command.context, cursor, **command.options)
+            elif command.action == GET:
+                query  = self.format_query(command.query)
+                log.debug('mongo running find_one(%s)',query)
+                return container.find_one(query)
+            elif command.action == CREATE:
+                data = command.data
+                log.debug('mongo running insert(%s)',data)
+                container.insert(data)
+                return data
+            elif command.action == UPDATE:
+                query  = self.format_query(command.query)
+                #existing = container.find_one(query)
+                data = command.data
+                del data['_id']
+                update = {'$set': data}
+                log.debug('mongo running find_and_modify(%s,%s)',query,update)
+                r= container.find_and_modify(query,update)
+                log.debug('returned %s',r)
+            elif command.action == DELETE:
+                query  = self.format_query(command.query)
+                log.debug('mongo running remove(%s)',query)
+                container.remove(query)
+                return None
             else:
-                method_name = action_map[command.action]
-                method = getattr(container,method_name)
-                if command.data:
-                    data = command.data
-                else:
-                    data = self.format_query(command.query)
-                log.debug('mongo executing %s(%s)',method_name,data)
-                result = method(data)
-                return result
+                raise ValueError(comamnd.action)
             
 except ImportError:
     pass
