@@ -1,7 +1,37 @@
 from apininja.log import log
 from apininja.helpers import *
-import gzip, zlib, bz2, lzma
 log.info('Initializing apininja.data.formatters namespace')
+
+compressors = {}
+decompressors = {}
+
+try:
+    import gzip
+    compressors['gzip'] = gzip.compress
+    decompressors['gzip'] = gzip.decompress
+except ImportError:
+    pass
+
+try:
+    import zlib
+    compressors['zlib'] = zlib.compress
+    decompressors['zlib'] = zlib.decompress
+except ImportError:
+    pass
+
+try:
+    import bz2
+    compressors['bz2'] = bz2.compress
+    decompressors['bz2'] = bz2.decompress
+except ImportError:
+    pass
+    
+try:
+    import lzma
+    compressors['lzma'] = lzma.compress
+    decompressors['lzma'] = lzma.decompress
+except ImportError:
+    pass
 
 class FormatterMetaclass(SelfRegisteringType):
     extension = 'Formatter'
@@ -63,19 +93,7 @@ def decompress_data(context,data):
                 
     return data
     
-compressors = {
-    'lzma':lzma.compress,
-    'gzip':gzip.compress,
-    'deflate':zlib.compress,
-    'bzip2':bz2.compress
-    }
-    
-decompressors = {
-    'lzma':lzma.decompress,
-    'gzip':gzip.decompress,
-    'deflate':zlib.decompress,
-    'bzip2':bz2.decompress
-    }
+
         
 # import remaining files in package to initialize them
 my_path = os.path.dirname(__file__)
