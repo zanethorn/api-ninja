@@ -259,7 +259,7 @@ class ApiApplication(Configurable):
             #log.debug('Registering Database %s with %s',name,c)
             self.database_config[name] = c
                 
-    def get_database(self,name,context = None):
+    def get_database(self,name,context):
         try:
             config = self.database_config[name]
         except KeyError:

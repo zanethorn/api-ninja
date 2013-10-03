@@ -22,7 +22,7 @@ class LoginController(Controller):
         return [GET,CREATE]
             
     def create(self, resource):
-        db = self.app.get_database(self.database)
+        db = self.app.get_database(self.database,self.context)
         users = db.get('users')
         data = self.request.data
         email = data['email']

@@ -9,11 +9,6 @@ class DataContainer(DataObject):
     #item_data_type = DataObject
     name = attribute('name',type='str',readonly=True)
     
-
-    # def __init__(self,parent,data,context):
-        # super().__init__(parent,data,context)
-        #self.item_data_type = find_type(self.item_type)
-        
     def __getattr__(self,name):
         try:
             return self._data[name]
