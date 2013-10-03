@@ -119,6 +119,7 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
             log.info('%s handling request for %s:%s'%(self.name,context.action,request.path))
             
             if not context.user:
+                context.user = unauthorized
                 context.user = self.find_user(context)
             if not context.user:
                 context.user = unauthorized

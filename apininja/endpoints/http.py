@@ -186,7 +186,7 @@ class HttpEndpoint(TcpEndpoint):
         except KeyError:
             return None
         
-        db = self.app.get_database(self.user_database)
+        db = self.app.get_database(self.user_database,context)
         users = db.get('users')
         user = users.get_user_by_token(token)
         if user:
