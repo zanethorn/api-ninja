@@ -97,13 +97,12 @@ class ApiApplication(Configurable):
 
         self.running = True
         
-        #print('ApiNinja Command Shell')
         while self.running:
-            # i = input('>>')
-            # o = self.parser.process_command(i)
-            # print(o)
-            time.sleep(.1)
-        
+            try:
+                time.sleep(.1)
+            except:
+                self.shutdown()
+                raise
             
     def shutdown(self):
         for end in self.endpoints.values():
