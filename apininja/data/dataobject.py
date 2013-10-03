@@ -92,15 +92,6 @@ class DataAttribute():
 def attribute(name='', **kwargs):
     return DataAttribute(name,**kwargs)
     
-# class TypeMetadata():
-    # def __init__(self,base):
-        # self.name = ''
-        # self.attributes = []
-        # self.base = base
-        # self.read_roles = []
-        # self.write_roles = []
-    
-    
 def known_type(name):
     def wrapper(cls):
         old_name = cls.__name__
@@ -115,20 +106,20 @@ def known_type(name):
     
 def read_roles(lst):
     def wrapper(cls):
-        cls.__metadata__['_read_roles'] = lst
+        cls.__read_roles__ = lst
         return cls
     return wrapper
     
 def write_roles(lst):
     def wrapper(cls):
-        cls.__metadata__['_write_roles'] = lst
+        cls.__write_roles__ = lst
         return cls
     return wrapper
     
 def roles(read,write):
     def wrapper(cls):
-        cls.__metadata__['_read_roles'] = read
-        cls.__metadata__['_write_roles'] = write
+        cls.__read_roles__ = read
+        cls.__write_roles__ = write
         return cls
     return wrapper
 
@@ -196,6 +187,8 @@ def find_type(name):
 class DataObject(metaclass = DataObjectType):
     last_updated = attribute('last_updated',default=None, readonly= True)
     created = attribute('created',default=None, readonly=True)
+    read_roles = attribute('read_roles',default=[], server_only = True)
+    write_roles = attribute('write_roles',default=[],server_only = True)
     
     def __init__(self,parent=None,data={}, context=None):
         self._parent = parent
@@ -250,11 +243,46 @@ class DataObject(metaclass = DataObjectType):
             output['_id'] = self._data['_id']
         except KeyError:
             pass
+            
         for a in attrs:
-            if a.can_write(self.context):
-                output[a.name] = getattr(self,a.name)
-        
+            try:
+                if str(self.id) == str(self.context.user.id):
+                    output[a.name] = self._data[a.name]
+                elif a.can_write(self.context):
+                    output[a.name] = self._data[a.name]
+                else:
+                    try:
+                        owner_id = self.owner['_id']
+                        if str(owner_id) == str(self.context.user.id):
+                            output[a.name] = self._data[a.name]
+                    except AttributeError:
+                        pass
+            except KeyError:
+                pass
         return output
+        
+    def can_read(self,context = None):
+        if not context:
+            context = self.context
+        if not context:
+            return True
+            
+        if str(context.user.id) == str(self.id):
+            return True
+            
+        if context.user.id == 'root':
+            return True
+            
+        if not self.read_roles:
+            return True
+            
+        for r1 in user.roles:
+            if r1 == 'root':
+                return True
+            for r2 in self.read_roles:
+                if r1 == r2:
+                    return True
+        return False
 
 def make_type(name,attributes,parent='object', read_roles= None,write_roles = None,**kwargs):
     dct = {}

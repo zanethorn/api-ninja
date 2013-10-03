@@ -10,5 +10,3 @@
     @property
     def parent(self):
         return self
-
-root = RootUser()

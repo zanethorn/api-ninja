@@ -68,6 +68,7 @@ class DataController(Controller):
         data = self.context.request.data
         resource = resource.parent
         data = resource.update(data)
+        log.debug('controller returned %s',data._data)
         return data
         
     def delete(self, resource):

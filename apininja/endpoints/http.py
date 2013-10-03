@@ -35,6 +35,7 @@ class HttpEndpoint(TcpEndpoint):
     STATUS_NOT_FOUND = 404
     STATUS_ACTION_NOT_ALLOWED = 405
     STATUS_NOT_ACCEPTABLE = 406
+    STATUS_CONFLICT = 409
     STATUS_INTERNAL_ERROR  = 500
     STATUS_NOT_IMPLEMENTED = 501
 
@@ -153,10 +154,10 @@ class HttpEndpoint(TcpEndpoint):
                 out_buffer.write(header_line)
                 
         # write cookie (if any)
-        log.debug('Writing Cookies')
         cookie = ';'.join(map(lambda i: '%s=%s'%i,response.variables.items()))
         if cookie:
-            cookie = 'set-cookie: '+cookie
+            log.debug('Writing Cookies \'%s\'',cookie)
+            cookie = 'set-cookie: '+cookie+'\r\n'
             cookie = cookie.encode('latin-1','strict')
             out_buffer.write(cookie)
             
@@ -167,10 +168,14 @@ class HttpEndpoint(TcpEndpoint):
         if request.command != 'HEAD' and response.data:
             out_buffer.write(response.data_stream)
         
-        log.debug('Exporting stream')
+        
+        #out_buffer.flush()
         # dump everything to output stream
-        response._dstream.write(out_buffer.getbuffer())
-        out_buffer.flush()
+        out_buffer.seek(0)
+        buffer =out_buffer.read()
+        log.debug('Exporting stream')
+        response._dstream.write(buffer)
+        response._dstream.flush()
         out_buffer.close()
         log.debug('Closing Buffer')
         

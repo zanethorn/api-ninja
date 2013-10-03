@@ -28,11 +28,11 @@ def init():
             os.remove(log_path)
     except FileNotFoundError:
         pass
-    # file_h = logging.FileHandler(log_path)
-    # file_h.setLevel(logging.INFO)
-    # file_formatter = logging.Formatter('%(levelname)s:  %(thread)d/%(threadName)s %(asctime)s - %(message)s')
-    # file_h.setFormatter(file_formatter)
-    # log.addHandler(file_h)
+    file_h = logging.FileHandler(log_path)
+    file_h.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter('%(levelname)s:  %(thread)d/%(threadName)s %(asctime)s - %(message)s')
+    file_h.setFormatter(file_formatter)
+    log.addHandler(file_h)
     
     initialized = True
     

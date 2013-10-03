@@ -71,7 +71,7 @@ class Route(Configurable):
             #log.debug('trying to match route %s to %s'%(self.expression.pattern,request.path))
             #return bool(self.expression.match(request.full_path))
             path_length = len(self.parts)
-            log.debug('routing with %s, %s',self.parts,request.path)
+            #log.debug('routing with %s, %s',self.parts,request.path)
             for x in range(path_length):
                 route_fragment = self.parts[x]
                 

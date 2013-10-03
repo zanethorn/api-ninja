@@ -15,6 +15,7 @@ from .security import User, Users
 from .plugins import *
 import os, importlib, collections, imp
 import time
+import smtplib
 import json
 from copy import copy, deepcopy
 from .parser import CommandParser
@@ -285,6 +286,7 @@ class ApiApplication(Configurable):
         db = db_type(self,adapter,config,context)
         return db
         
+        
     def get_formatter(self,context, response=True):
         types = FormatterMetaclass.known_types.values()
         formats = []
@@ -324,6 +326,12 @@ class ApiApplication(Configurable):
             context.response.mime_type = format_type.mime_types[0]
         formatter = format_type(context,config)
         return formatter
+        
+    def send_mail(self,to_addr,from_addr,message):
+        server = smtplib.SMTP('localhost')
+        server.set_debuglevel(1)
+        server.sendmail(from_addr, to_addr, message)
+        server.quit()
         
 if __name__ == '__main__':
     app = ApiApplication()

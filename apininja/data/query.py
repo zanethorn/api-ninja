@@ -2,35 +2,44 @@
 from apininja.helpers import *
 
 class DataQuery():
-    skip = 0
-    limit = None
-    selector = None
+    
 
     def __init__(self,container,context,cursor,**options):
         self.container = container
         self.context = context
         self.cursor = cursor
+        
+        self.skip = 0
+        self.limit = None
+        self.selector = None
+        
         for k,v in options.items():
             setattr(self,k,v)
         self.options = options
         self.skipped = 0
         self.taken = 0
+        
         if self.selector is None:
             self.selector = lambda d: self.container.make_item(d)
         
     def _skip(self):
         while True:
             item = self._get_next_item()
-            #if item.can_read(self.context):
-            self.skipped += 1
-            return
+            if item.can_read(self.context):
+                self.skipped += 1
+                return
+            else:
+                log.debug('skipping %s because I can\'t read it',item)
         
     def _take(self):
         while True:
             item = self._get_next_item()
-            #if item.can_read(self.context):
-            self.taken += 1
-            return item
+            if item.can_read(self.context):
+                self.taken += 1
+                return item
+            else:
+                log.debug('skipping %s because I can\'t read it',item)
+            
                 
     def _get_next_item(self):
         data = next(self.cursor)

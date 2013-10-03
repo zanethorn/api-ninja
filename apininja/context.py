@@ -8,8 +8,7 @@ class StopExecutionException(Exception):
     pass
 
 class RequestContext():
-    protocol = ''
-    endpoint = None
+
     client = None
     raw_request = None
     path = ''
@@ -86,33 +85,35 @@ class RequestContext():
         return None
             
 class ResponseContext():
-    status = 0
-    message = ''
-    data = None
-    allow_actions = []
-    cache_control = None
-    connection = None
+
+    
+    
     #connection_handling = 'close'
     
-    language = None
-    alternate_location = None
-    mime_type = ''
-    send_date = None
-    data_expires = None
-    last_modified = None
-    new_location = None
-    application_string = None
-    variables = {}
+    
     
     def __init__(self,endpoint):
         self.endpoint = endpoint
         self.status = endpoint.STATUS_SUCCESS
         self.app = endpoint.app
+        self.message = ''
+        self.allow_actions = []
         self._data = None
         self._data_range = None
         self._data_stream = None
         self._compression = None
         self._data_encoding = None
+        self.cache_control = None
+        self.connection = None
+        self.language = None
+        self.alternate_location = None
+        self.mime_type = ''
+        self.send_date = None
+        self.data_expires = None
+        self.last_modified = None
+        self.new_location = None
+        self.application_string = None
+        self.variables = {}
         self.application_string = self.app.application_string
        
     @property
@@ -196,7 +197,8 @@ class ResponseContext():
         else:
             self._data_encoding = None
             
-    
+    def conflict(self,message=''):
+        self.send_error(self.endpoint.STATUS_CONFLICT,message)
 
     def not_found(self, message=''):
         self.send_error(self.endpoint.STATUS_NOT_FOUND,message)

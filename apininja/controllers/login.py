@@ -26,12 +26,19 @@ class LoginController(Controller):
         users = db.get('users')
         data = self.request.data
         email = data['email']
+        
+        try:
+            if self.request.options['reset']:
+                return users.reset_password(email)
+        except:
+            pass
+        
         password = data['password']
         
         user, token = users.login(email,password)
         log.debug('found user %s',user)
         data = {'user':user, 'token':token}
-        self.response.variables['token'] = token.value
+        
         return data
         
     def get(self, resource):

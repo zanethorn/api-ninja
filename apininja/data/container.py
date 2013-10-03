@@ -5,14 +5,14 @@ from datetime import datetime
 
 @known_type('container')
 class DataContainer(DataObject):
-    item_type= attribute('item_type',default='object')
-    item_data_type = DataObject
+    item_type= 'object'
+    #item_data_type = DataObject
     name = attribute('name',type='str',readonly=True)
     
 
-    def __init__(self,parent,data,context):
-        super().__init__(parent,data,context)
-        self.item_data_type = find_type(self.item_type)
+    # def __init__(self,parent,data,context):
+        # super().__init__(parent,data,context)
+        #self.item_data_type = find_type(self.item_type)
         
     def __getattr__(self,name):
         try:
@@ -25,6 +25,17 @@ class DataContainer(DataObject):
             super().__setattr__(name,value)
         else:
             self._data[name] = value
+    @property    
+    def id(self):
+        return self.name
+            
+    @property
+    def request(self):
+        return self.context.request
+        
+    @property
+    def response(self):
+        return self.context.response
 
     @property
     def database(self):
@@ -47,13 +58,13 @@ class DataContainer(DataObject):
         return self._data['name']
 
     def make_item(self,data):
-        t= self.item_data_type
+        t= find_type(self.item_type)
         try:
             t_name = data['_t']
             t = find_type(t_name)
         except KeyError:
             pass
-        
+        log.debug('%s is making item of type %s',self.name,t)
         return t(parent=self,data=data,context = self.context)
 
     def connect(self):
@@ -66,12 +77,15 @@ class DataContainer(DataObject):
         
     def get(self,id):
         query = self.get_id_query(id)
+        log.debug('%s using query %s',self.name,query)
         cmd = self.database.make_command(GET,self,query= query)
         result = self.data_adapter.execute_command(cmd)
         if not result:
             return None
         if isinstance(result,dict):
             result = self.make_item(result)
+        if not result.can_read(self.context):
+            self.response.permission_error()
             
         return result
         

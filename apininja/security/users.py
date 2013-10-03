@@ -23,7 +23,7 @@ class User(DataObject):
     last_failed_login = attribute('last_failed_login', server_only = True)
     locked = attribute('locked', server_only = True)
     salt = attribute('salt', server_only = True)
-    owner_id = attribute('owner_id', server_only = True)
+    #owner_id = attribute('owner_id', server_only = True)
     roles = attribute('roles',default=[], server_only = True)
     tokens = attribute('tokens',default=[], server_only = True)
     
@@ -50,7 +50,7 @@ class Users(DataContainer):
     def login(self,email,password):
         result = self.get(email)
         if result is None:
-            print('user not found!')
+            log.debug('User %s not found',email)
             return None, None
         result = result._data
         salt = result['salt']
@@ -65,7 +65,8 @@ class Users(DataContainer):
            if result['failed_logins'] >= int(config['RULES']['failed_logins']):
                result['locked'] = True
                result['tokens']=[]
-           self._inner.save(result)
+           self.update(result)
+           log.debug('User %s failed to logged in',email)
            return None,None
 
         salt = generate_salt()
@@ -85,12 +86,15 @@ class Users(DataContainer):
             'expires':now+timedelta(minutes=60)
             }
          
-        tokens.append( token_data)
+        tokens.append(token_data)
         result['tokens'] = tokens
-        user = self.make_item(result)
-        self.update(result)
+        user = self.update(result)
+        
+        self.context.user = user
         
         token = AccessToken(parent=user,data=token_data,context=self.context)
+        self.response.variables['token'] = token.value
+        log.debug('User %s logged in',email)
         return user, token
         
     def list(self,query={},limit=None,skip=0,select=None,**options):
@@ -107,6 +111,69 @@ class Users(DataContainer):
         
         return super().list(query,limit,skip,select,**options)
         
+    def create(self,obj):
+        if isinstance(obj,dict):
+            data = obj
+        elif isinstance(obj,DataObject):
+            data = obj.to_write_dict()
+        else:
+            raise TypeError('Expected DataObject, got %s',type(obj).__name__)
+            
+        try:
+            email = data['email']
+        except KeyError:
+            self.response.bad_request('Must provide email address')
+            
+        try:
+            password = data['password']
+        except KeyError:
+            self.response.bad_request('Must provide password')
+            
+        existing = self.get(email)
+        if existing:
+            self.response.conflict('User already exists')
+            
+        now = datetime.utcnow()
+        salt = generate_salt()
+        data['salt'] = salt
+        data['last_activity']= now
+        data['last_updated'] = now
+        data['last_login'] = None
+        data['password'] = hash_password(password,salt)
+        data['failed_logins'] =0
+        data['last_failed_login'] = None
+        data['locked'] = False
+        data['roles'] = []
+        data['tokens'] = []
+        
+        new_user = super().create(data)
+        self.context.user = new_user
+        try:
+            if self.request.options['login']:
+                log.debug('Also logging in...')
+                new_user, token = self.login(email,password)
+        except KeyError as err:
+            log.debug('Could not login user due to key error %s',err)
+        return new_user
+        
+    def reset_password(self,email):
+        result = self.get(email)
+        if result is None:
+            print('user not found!')
+            return None, None
+        result = result._data
+        salt = generate_salt()
+        
+        password = random_string(8)
+        now = datetime.utcnow()
+        result['salt'] = salt
+        result['last_activity']= now
+        result['last_updated'] = now
+        result['password'] = hash_password(password,salt)
+        self.update(result)
+        self.app.send_mail(email,'reset@legacyit.com','Your password has been reset to %s'%password)
+        return {'message':'Password has been reset'}
+        
     def get_user_by_token(self,token):
         return self.get({'tokens':{'$elemMatch':{'value':token}}})
     
@@ -114,8 +181,8 @@ class Users(DataContainer):
         if isinstance(id,dict):
             return id
         if id == 'me':
-            if self.context.user:
-                return {'_id':self.context.user.id}
+            log.debug('Looking for \'me\' with id %s',self.context.user)
+            return {'_id':self.context.user.id}
         elif re.match(r'^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$',str(id),re.I):
             return {'email':id}
         return {'_id':id}

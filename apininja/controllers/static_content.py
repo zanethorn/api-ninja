@@ -17,9 +17,10 @@ class StaticContentController(Controller):
         content_path = os.path.join(app_root,self.content_folder)
         for p in path:
             content_path = os.path.join(content_path,p)
+            
         if os.path.isdir(content_path):
             if not self.allow_directory_listing:
-                path = os.path.join(content_path,'index.html')
+                content_path = os.path.join(content_path,'index.html')
         
         if not os.path.exists(content_path):
             self.response.not_found()
@@ -27,7 +28,9 @@ class StaticContentController(Controller):
         ix = content_path.rfind('.')
         ext = content_path[ix:]
         try:
-            self.response.mime_type = mime_types[ext]
+            mime = mime_types[ext]
+            self.response.mime_type = mime
+            log.debug('suggested MIME type for %s = %s',ext,mime)
         except KeyError:
             pass
             
@@ -43,7 +46,10 @@ class StaticContentController(Controller):
     def get_allowed_actions(self,resource):
         print(resource)
         if os.path.isdir(resource):
-            return [LIST,GET]
+            l= [GET]
+            if self.allow_directory_listing:
+                l.append(LIST)
+            return l
         else:
             return [GET]
         
@@ -51,10 +57,17 @@ class StaticContentController(Controller):
         if not os.path.exists(resource):
             self.response.not_found()
             
+        if os.path.isdir(resource):
+            return self.list(resource)
+            
         with open(resource,'rb') as file:
             return file.read()
             
     def list(self,resource):
         if not os.path.exists(resource):
             self.response.not_found()
+            
+        if not self.allow_directory_listing:
+            self.response.action_not_allowed()
+            
         return os.listdir(resource)

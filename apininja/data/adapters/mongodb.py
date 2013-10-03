@@ -15,8 +15,12 @@ try:
         }
     
     class MongodbAdapter(DataAdapter):
-        system_container = '_system'
-        key_type = bson.objectid.ObjectId
+        
+        
+        def __init__(self,config=None):
+            super().__init__(config)
+            self.system_container = '_system'
+            self.key_type = bson.objectid.ObjectId
         
         def connect(self,connection):
             if isinstance(connection,str):
@@ -37,8 +41,8 @@ try:
             for k,v in query.items():
                 if isinstance(v,str):
                     try:
-                        query[k] = ObjectId(v)
-                    except:
+                        query[k] = self.parse_key(v)
+                    except Exception as ex:
                         pass
             return query
 
@@ -63,13 +67,13 @@ try:
                 return data
             elif command.action == UPDATE:
                 query  = self.format_query(command.query)
-                #existing = container.find_one(query)
+                existing = container.find_one(query)
                 data = command.data
                 del data['_id']
                 update = {'$set': data}
                 log.debug('mongo running find_and_modify(%s,%s)',query,update)
-                r= container.find_and_modify(query,update)
-                log.debug('returned %s',r)
+                r= container.find_and_modify(query=query,update=update, full_response=True,new=True)
+                log.debug('updated %s to  %s',existing, r)
             elif command.action == DELETE:
                 query  = self.format_query(command.query)
                 log.debug('mongo running remove(%s)',query)

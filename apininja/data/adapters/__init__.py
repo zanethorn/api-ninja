@@ -8,12 +8,15 @@ class AdapterMetaclass(SelfRegisteringType):
 
 class DataAdapter(Configurable, metaclass=AdapterMetaclass):
 
-    key_type = int
+    def __init__(self,config=None):
+        super().__init__(config)
+        self.key_type = int
     
     def parse_key(self, s):
         try:
             return self.key_type(s)
         except:
+            log.debug('%s could not convert %s to type %s',self.name,s,self._key_type)
             return s
 
     def connect(self,connection):
