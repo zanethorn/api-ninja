@@ -18,7 +18,7 @@ class StaticContentController(Controller):
         for p in path:
             content_path = os.path.join(content_path,p)
         if os.path.isdir(content_path):
-            if self.allow_directory_listing:
+            if not self.allow_directory_listing:
                 path = os.path.join(content_path,'index.html')
         
         if not os.path.exists(content_path):
