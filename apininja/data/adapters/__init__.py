@@ -16,7 +16,7 @@ class DataAdapter(Configurable, metaclass=AdapterMetaclass):
         try:
             return self.key_type(s)
         except:
-            log.debug('%s could not convert %s to type %s',self.name,s,self._key_type)
+            #log.debug('%s could not convert %s to type %s',self.name,s,self.key_type)
             return s
 
     def connect(self,connection):

@@ -147,7 +147,7 @@ class ApiApplication(Configurable):
                 raise ValueError('protocol %s not found'%protocol)
                 
             endpoint = end_cls(self,c)
-            log.debug('Registering Endpoint %s',name)
+            log.info('Registering Endpoint %s',name)
             self.endpoints[name] = endpoint
         
     def setup_routes(self, config):
@@ -185,7 +185,7 @@ class ApiApplication(Configurable):
                 except KeyError:
                     raise ValueError('Controller %s did not specifiy a mapping type (map_to) and no known controller type matched name'%name)
                     
-            log.debug('Registering Controllers %s',name)
+            log.info('Registering Controllers %s',name)
             self.controller_config[name] = c
         
     def map_route(self,request):
@@ -232,7 +232,7 @@ class ApiApplication(Configurable):
                 except KeyError:
                     raise ValueError('Adapter %s did not specifiy a mapping type (map_to) and no known data adapter type matched name'%name)
                     
-            log.debug('Registering Data Adapter %s',name)
+            log.info('Registering Data Adapter %s',name)
             self.data_adapters[name] = adapter_cls(c)
             
     def setup_databases(self,config):
@@ -256,7 +256,6 @@ class ApiApplication(Configurable):
             except KeyError:
                 raise ValueError('Connection must be specified for databases')
                 
-            #log.debug('Registering Database %s with %s',name,c)
             self.database_config[name] = c
                 
     def get_database(self,name,context):
@@ -306,7 +305,7 @@ class ApiApplication(Configurable):
         else:
             formats = [ context.request.mime_type ]        
         
-        log.debug('Finding formatter for %s',formats)
+        #log.debug('Finding formatter for %s',formats)
         format_type = None
         for t in formats:
             for f in types:

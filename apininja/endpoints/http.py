@@ -140,7 +140,6 @@ class HttpEndpoint(TcpEndpoint):
         out_buffer = io.BytesIO()
         response_line = '%s %d %s\r\n'%(request.version, response.status, response.message)
         response_line = response_line.encode('latin-1','strict')
-        #log.debug('returning response %s'%response_line)
         out_buffer.write(response_line)
         
         # write headers
@@ -168,8 +167,6 @@ class HttpEndpoint(TcpEndpoint):
         if request.command != 'HEAD' and response.data:
             out_buffer.write(response.data_stream)
         
-        
-        #out_buffer.flush()
         # dump everything to output stream
         out_buffer.seek(0)
         buffer =out_buffer.read()

@@ -6,26 +6,37 @@ class DatabaseMetaclass(SelfRegisteringType):
     extension = 'Database'
         
 class Database(Configurable, metaclass =DatabaseMetaclass ):
-    name = ''
-    connection = ''
-    adapter = ''
-    default_limit = 50
-    max_limit = 500
-    db = None
-    system_config = None
+    
     
     def __init__(self, app, adapter, config=None, context= None):
+    
+        # default values
+        self.name = ''
+        self.connection = ''
+        self.adapter = ''
+        self.default_limit = 50
+        self.max_limit = 500
+        self.db = None
+        self.system_config = None
+    
+        # call to base
         super().__init__(config)
+        
+        # set key values
         self.app = app
         self.data_adapter = adapter
         self.context = context
         self.db = self.connect()
+        
+        # setup system if not already done
         if not self.system_config:
             self.system_config = {
                 'name': self.data_adapter.system_container,
                 '_t': 'system_container',
                 'item_type':'container'
                 }
+                
+        # get system container
         self.system_container = self.get_system_container()
 
     @property

@@ -1,3 +1,4 @@
+from apininja.data import *
 from apininja.data.query import *
 from apininja.data.adapters import DataAdapter, parse_connection
 from apininja.actions import *
@@ -7,16 +8,18 @@ try:
     import pymongo, bson
     
     action_map = {
-            LIST: 'find',
-            GET:'find_one',
-            CREATE:'insert',
-            UPDATE:'save',
-            DELETE:'remove'
+        LIST: 'find',
+        GET:'find_one',
+        CREATE:'insert',
+        UPDATE:'save',
+        DELETE:'remove'
         }
+        
+    simple_types.append(bson.objectid.ObjectId)
+    DataObjectType.known_types['oid'] = bson.objectid.ObjectId
     
     class MongodbAdapter(DataAdapter):
-        
-        
+    
         def __init__(self,config=None):
             super().__init__(config)
             self.system_container = '_system'
@@ -54,31 +57,43 @@ try:
             if command.action == LIST:
                 query  = self.format_query(command.query)
                 cursor = container.find(query)
-                log.debug('mongo running find(%s)',query)
+                #log.debug('mongo running find(%s)',query)
                 return DataQuery(command.container, command.context, cursor, **command.options)
+                
             elif command.action == GET:
                 query  = self.format_query(command.query)
-                log.debug('mongo running find_one(%s)',query)
-                return container.find_one(query)
+                #log.debug('mongo running find_one(%s)',query)
+                r = container.find_one(query)
+                #assert r['_id']
+                return r
+                
             elif command.action == CREATE:
                 data = command.data
-                log.debug('mongo running insert(%s)',data)
-                container.insert(data)
+                if '_id' in data:
+                    del data['_id']
+                id = container.insert(data, manipulate=True)
+                data['_id'] = id
+                assert data['_id']
                 return data
+                
             elif command.action == UPDATE:
                 query  = self.format_query(command.query)
                 existing = container.find_one(query)
                 data = command.data
                 del data['_id']
                 update = {'$set': data}
-                log.debug('mongo running find_and_modify(%s,%s)',query,update)
+                #log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=True,new=True)
-                log.debug('updated %s to  %s',existing, r)
+                #log.debug('updated %s to  %s',existing, r)
+                assert r['_id']
+                return r
+                
             elif command.action == DELETE:
                 query  = self.format_query(command.query)
                 log.debug('mongo running remove(%s)',query)
                 container.remove(query)
                 return None
+                
             else:
                 raise ValueError(comamnd.action)
             

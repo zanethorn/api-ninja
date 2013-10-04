@@ -60,7 +60,9 @@ class DataContainer(DataObject):
         except KeyError:
             pass
         log.debug('%s is making item of type %s',self.name,t)
-        return t(parent=self,data=data,context = self.context)
+        d= t(parent=self,data=data,context = self.context)
+        assert d.id
+        return d
 
     def connect(self):
         return self.data_adapter.connect(self.connection)
@@ -72,7 +74,7 @@ class DataContainer(DataObject):
         
     def get(self,id):
         query = self.get_id_query(id)
-        log.debug('%s using query %s',self.name,query)
+        #log.debug('%s using query %s',self.name,query)
         cmd = self.database.make_command(GET,self,query= query)
         result = self.data_adapter.execute_command(cmd)
         if not result:
@@ -82,6 +84,7 @@ class DataContainer(DataObject):
         if not result.can_read(self.context):
             self.response.permission_error()
             
+        assert result.id
         return result
         
     def create(self,obj):
@@ -103,7 +106,8 @@ class DataContainer(DataObject):
             result = data
         if isinstance(result,dict):
             result = self.make_item(result)
-            
+        
+        assert result.id
         return result
         
     def update(self,obj):
@@ -130,6 +134,7 @@ class DataContainer(DataObject):
             result = self.make_item(result)
         else:
             raise TypeError('Could not interpret result')
+        assert result.id
         return result
         
     def delete(self,obj):

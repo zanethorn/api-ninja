@@ -14,12 +14,19 @@ def handle_default(item):
     if isinstance(item,datetime):
         return item.isoformat()
     elif isinstance(item,DBRef):
-        return {'collection':item.collection,'id':item.id,'_t':'ref'}
+        return {'collection':item.collection,'_id':item.id,'_t':'ref'}
+    elif isinstance(item,ObjectCollection):
+        return item._items
     elif isinstance(item,DataObject):
+        if not item.id:
+            log.error('%s does not have an id',item)
+            raise RuntimeError()
         return item.to_dict()
     else:
         try:
-            return str(item)
+            s= str(item)
+            log.debug('converted item %s to %s',item, s)
+            return s
         except:
             raise TypeError('cannot format %s'%item.__class__.__name__)
 

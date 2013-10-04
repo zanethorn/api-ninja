@@ -7,17 +7,17 @@ log.debug('Loading assets')
 
 @known_type('asset')
 class Asset(DataObject):
-    uri = attribute()
-    file_extension = attribute()
+    uri = attribute(type='str')
+    file_extension = attribute(type='str')
     mime_type = attribute(type='str')
     file_size = attribute(type='int')
-    original_extension = attribute(server_only=True)
-    original_filename = attribute(server_only=True)
-    original_folder = attribute(server_only=True)
+    original_extension = attribute(type='str', server_only=True)
+    original_filename = attribute(type='str', server_only=True)
+    original_folder = attribute(type='str', server_only=True)
     rotation = attribute(type='int',default=0)
-    flags = attribute(default=[])
-    albums = attribute(default=[])
-    path = attribute(server_only=True)
+    albums = attribute(type='list', item_type='oid', default=[])
+    path = attribute(type='str', server_only=True)
+    title = attribute(type='str')
 
 @known_type('assets')    
 class Assets(DataContainer):
@@ -56,7 +56,6 @@ class Assets(DataContainer):
         # return item
 
     def _delete_item(self,item):
-        
         os.remove(item.path)
         super()._delete_item(item)
         

@@ -12,20 +12,23 @@ def hash_password(password,salt):
 def generate_salt():
     return random_string(16)
 
+@known_type('token')
+class AccessToken(DataObject):
+    expires = attribute('expires',type='datetime')
+    
 @known_type('user')
 class User(DataObject):
-    email=attribute()
-    name=attribute()
+    email=attribute('email', type='str')
+    name=attribute('name', type='str')
     password = attribute('password', server_only = True)
-    last_login = attribute('last_login', server_only = True)
-    last_activity = attribute('last_activity', server_only = True)
-    failed_logins = attribute('failed_logins', default=0, server_only = True)
+    last_login = attribute('last_login',type='datetime', server_only = True)
+    last_activity = attribute('last_activity',type='datetime', server_only = True)
+    failed_logins = attribute('failed_logins',type='int', default=0, server_only = True)
     last_failed_login = attribute('last_failed_login', server_only = True)
-    locked = attribute('locked', server_only = True)
+    locked = attribute('locked',type='bool', server_only = True)
     salt = attribute('salt', server_only = True)
-    #owner_id = attribute('owner_id', server_only = True)
-    roles = attribute('roles',default=[], server_only = True)
-    tokens = attribute('tokens',default=[], server_only = True)
+    roles = attribute('roles', type='list', item_type='str', default=[], server_only = True)
+    tokens = attribute('tokens', type='list', item_type='token', default=[], server_only = True)
     
     def change_password(self,password):
         salt = generate_salt()
@@ -33,15 +36,11 @@ class User(DataObject):
         self._data['salt'] = salt
         self._data['password'] = hashed
     
-@known_type('token')
-class AccessToken(DataObject):
-    value = attribute('value')
-    expires = attribute('expires')
     
 @known_type('login')
 class Login(DataObject):
-    email = attribute('email')
-    password = attribute('password')
+    email = attribute('email', type='str')
+    password = attribute('password', type='str')
     
 @known_type('users')
 class Users(DataContainer):
@@ -81,7 +80,7 @@ class Users(DataContainer):
             # tokens.remove(t)
         
         token_data = {
-            'value':random_string(40),
+            '_id':random_string(40),
             'created':now,
             'expires':now+timedelta(minutes=60)
             }
@@ -93,7 +92,7 @@ class Users(DataContainer):
         self.context.user = user
         
         token = AccessToken(parent=user,data=token_data,context=self.context)
-        self.response.variables['token'] = token.value
+        self.response.variables['token'] = token.id
         log.debug('User %s logged in',email)
         return user, token
         
@@ -175,7 +174,7 @@ class Users(DataContainer):
         return {'message':'Password has been reset'}
         
     def get_user_by_token(self,token):
-        return self.get({'tokens':{'$elemMatch':{'value':token}}})
+        return self.get({'tokens':{'$elemMatch':{'_id':token}}})
     
     def get_id_query(self,id):
         if isinstance(id,dict):

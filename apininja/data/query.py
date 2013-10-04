@@ -28,8 +28,8 @@ class DataQuery():
             if item.can_read(self.context):
                 self.skipped += 1
                 return
-            else:
-                log.debug('skipping %s because I can\'t read it',item)
+            # else:
+                # log.debug('skipping %s because I can\'t read it',item)
         
     def _take(self):
         while True:
@@ -37,13 +37,16 @@ class DataQuery():
             if item.can_read(self.context):
                 self.taken += 1
                 return item
-            else:
-                log.debug('skipping %s because I can\'t read it',item)
+            # else:
+                # log.debug('skipping %s because I can\'t read it',item)
             
                 
     def _get_next_item(self):
         data = next(self.cursor)
+        assert data['_id']
         item = self.selector(data)
+        assert item.id
+        # log.debug('query found data %s',data)
         return item
         
     def __iter__(self):

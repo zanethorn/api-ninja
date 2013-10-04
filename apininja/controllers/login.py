@@ -36,7 +36,8 @@ class LoginController(Controller):
         password = data['password']
         
         user, token = users.login(email,password)
-        log.debug('found user %s',user)
+        assert user.id
+        #log.debug('found user %s',user)
         data = {'user':user, 'token':token}
         
         return data

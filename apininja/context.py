@@ -63,11 +63,11 @@ class RequestContext():
                     bytes_read +=len(d)
             
             if self.compression:
-                log.debug('decompressing data stream with %s',self.compression)
+                #log.debug('decompressing data stream with %s',self.compression)
                 raw = decompress_data(self.context,raw)
-            log.debug('Request body len: %d (says %s)',len(raw),self.data_length)
+            #log.debug('Request body len: %d (says %s)',len(raw),self.data_length)
             formatter = self.app.get_formatter(self.context,False)
-            log.debug('Found formatter %s',formatter)
+            #log.debug('Found formatter %s',formatter)
             if formatter:
                 data = formatter.decode(raw)
             else:
@@ -86,12 +86,6 @@ class RequestContext():
             
 class ResponseContext():
 
-    
-    
-    #connection_handling = 'close'
-    
-    
-    
     def __init__(self,endpoint):
         self.endpoint = endpoint
         self.status = endpoint.STATUS_SUCCESS
@@ -129,7 +123,7 @@ class ResponseContext():
         else:
             formatter = self.app.get_formatter(self.context,True)
             if formatter:
-                log.debug('Encoding data with %s',type(formatter).__name__)
+                #log.debug('Encoding data with %s',type(formatter).__name__)
                 self._data_stream = formatter.encode(self.data)
             else:
                 self.not_acceptable()

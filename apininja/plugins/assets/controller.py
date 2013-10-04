@@ -107,7 +107,7 @@ class AssetController(EditableContentController):
             asset.path = path
             asset.uri = '/%s/%s/%s/%s'%(self.content_folder,uid,asset.id,filename)
             asset = self.container.update(asset)
-            
+            log.debug('Returning asset with id %s',asset.id)
             return asset
         except:
             self.container.delete(asset)

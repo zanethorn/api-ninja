@@ -18,26 +18,68 @@ class DataAttribute():
         self.read_roles = []
         self.write_roles = []
         self.type = None
+        self.item_type = None
         self.readonly = False
         self.default = None
         self.required = False
-        self.data_type = None
         self.parent_type = None
         self.server_only = False
         
         for k,v in kwargs.items():
             setattr(self,k,v)
-        if self.type:
-            self.data_type = find_type(self.type)
+        
+    @property
+    def data_type(self):
+        return find_type(self.type,self.item_type)
         
     def __get__(self,obj,objtype):
         if obj is None:
             return self
             
+        t = self.data_type
+        field_name = self.name
+
         try:
-            return obj._data[self.name]
+            item = obj._data[self.name]
         except KeyError:
-            return self.default
+            item= self.default
+            
+        if t:
+            if not isinstance(item,t):
+                if item is None and self.default is None:
+                    return None
+            
+                if issubclass(t,ObjectCollection):
+                    try:
+                        metadata = obj._data['_'+self.name]
+                        
+                    except KeyError:
+                        metadata = {'field':self.name,'item_type':self.item_type}
+                        obj._data['_'+self.name] = metadata
+                        
+                    if not item:
+                        if self.type == 'list':
+                            item = []
+                        elif self.type == 'dict':
+                            item = {}
+                        else:
+                            raise TypeError('Unknown collection type')
+                        obj._data[self.name] = item
+                        
+                    item = t(obj,metadata,obj.context,item)
+                elif issubclass(t,DataObject):
+                    if not item:
+                        item = {}
+                        obj._data[self.name] = item
+                    item = t(item)
+                elif t is datetime.datetime:
+                    item = convert_date(item)
+                else:
+                    try:
+                        item = t(item)
+                    except:
+                        raise TypeError('Could not cast %s to %s',item,t)
+        return item
         
     def __set__(self,obj,value):
         if not obj:
@@ -50,11 +92,25 @@ class DataAttribute():
         if self.required and not value:
             raise ValueError('%s is required'%self.name)
             
-        if self.data_type and not isinstance(value,self.data_type):
-            try:
-                value = self.data_type(value)
-            except:
-                raise TypeError('%s expected value of type %s',(self.name,self.type))
+        t = self.data_type
+        if isinstance(value,ObjectCollection):
+            obj._data['_'+self.name] = value._data
+            value = value._inner
+            
+        elif isinstance(value,DataObject):
+            value = value._data
+            
+        elif isinstance(value,list) or isinstance(value,dict):
+            pass
+            
+        elif not isinstance(value,t):
+            if t is datetime.datetime:
+                item = convert_date(item)
+            else:
+                try:
+                    value = t(item)
+                except:
+                    raise TypeError('%s expected value of type %s',(self.name,self.type))
             
         obj._data[self.name] = value
         
@@ -165,7 +221,7 @@ class DataObjectType(type):
         return type.__instancecheck__(cls,instance)
 
     def __subclasscheck__(cls,subclass):
-        return type.__instancecheck__(cls,instance)
+        return type.__subclasscheck__(cls,subclass)
         
     def __repr__(self):
         return '<type: %s >' % self.__name__
@@ -174,21 +230,46 @@ class DataObjectType(type):
         cls.__attributes__.append(attribute)
         setattr(cls,attribute.name,attribute)
         
-def find_type(name):
+def find_type(name,item_type=None):
+    if name is None:
+        return None
     if name == 'type':
         name = 'container'
+    
+    if item_type:
+        try:
+            return DataObjectType.known_types['%s_%s'%(name,item_type)]
+        except KeyError:
+            pass
     try:
-        return DataObjectType.known_types[name]
+        if item_type:
+            t= make_type('%s_%s'%(name,item_type),{},name)
+            t.item_type = item_type
+            return t
+        else:
+            return DataObjectType.known_types[name]
     except KeyError:
-        pass
-    raise TypeError('Type \'%s\' could not be found'%name)
+        raise TypeError('Type \'%s\' could not be found'%name)
+        
+def make_type(name,attributes,parent='object', read_roles= None,write_roles = None,**kwargs):
+    dct = {}
+    bases = (find_type(parent), )
+    for attr_name, config in attributes.items():
+        attr = DataAttribute(attr_name,**config)
+        dct[attr_name] = attr
+        
+    cls = DataObjectType(name,bases,dct)
+    cls.__metadata__ = kwargs
+    cls.__name__ = name
+    
+    return cls
         
 @known_type('object')
 class DataObject(metaclass = DataObjectType):
-    last_updated = attribute('last_updated',default=None, readonly= True)
-    created = attribute('created',default=None, readonly=True)
-    read_roles = attribute('read_roles',default=[], server_only = True)
-    write_roles = attribute('write_roles',default=[],server_only = True)
+    last_updated = attribute('last_updated',type='datetime',default=None, readonly= True)
+    created = attribute('created',type='datetime',default=None, readonly=True)
+    read_roles = attribute('read_roles',type='list',item_type='str',default=[], server_only = True)
+    write_roles = attribute('write_roles',type='list',item_type='str',default=[],server_only = True)
     
     def __init__(self,parent=None,data={}, context=None):
         self._parent = parent
@@ -219,16 +300,15 @@ class DataObject(metaclass = DataObjectType):
         t = type(self)
         attrs = t.__attributes__
         output = { }
+        assert self.id
+        
         try:
             output['_t'] = self._data['_t']
         except KeyError:
             output['_t'] = type(self).__name__
             
-        try:
-            output['_id'] = self._data['_id']
-        except KeyError:
-            output['_id'] = self.id
-        
+        output['_id'] = self.id
+            
         for a in attrs:
             if a.can_read(self.context) and not a.server_only:
                 output[a.name] = getattr(self,a.name)
@@ -238,11 +318,14 @@ class DataObject(metaclass = DataObjectType):
     def to_write_dict(self):
         t = type(self)
         attrs = t.__attributes__
-        output = { '_t': self._data['_t'] }
+        output = {}
+        #assert self.id
         try:
-            output['_id'] = self._data['_id']
+            output['_t']= self._data['_t']
         except KeyError:
-            pass
+            output['_t'] = type(self).__name__
+        
+        output['_id'] = self.id
             
         for a in attrs:
             try:
@@ -284,16 +367,84 @@ class DataObject(metaclass = DataObjectType):
                     return True
         return False
 
-def make_type(name,attributes,parent='object', read_roles= None,write_roles = None,**kwargs):
-    dct = {}
-    bases = (find_type(parent), )
-    for attr_name, config in attributes.items():
-        attr = DataAttribute(attr_name,**config)
-        dct[attr_name] = attr
-        
-    cls = DataObjectType(name,bases,dct)
-    cls.__metadata__ = kwargs
-    cls.__metadata__['name'] = name
+class ObjectCollection(DataObject):
+    item_type = attribute()
+    field = attribute(required=True)
     
-    return cls
+    def __init__(self,parent=None, data={}, context=None, inner=None ):
+        self.item_data_type = None
+        super().__init__(parent,data,context)
+        if self.item_type:
+            self.item_data_type = find_type(self.item_type)
+        self._inner = inner
+        self._items = None
+        
+    @property
+    def id(self):
+        return self.field
+        
+    def ensure_items(self):
+        if not self._items:
+            self._items = self.load_items()
+        
+    def load_items(self):
+        raise NotImplementedError()
+        
+    def make_item(self,data):
+        if data is None:
+            return None
+            
+        if not self.item_type:
+            return data
+            
+        t= find_type(self.item_type)
+        if isinstance(data,dict):
+            try:
+                t_name = data['_t']
+                t = find_type(t_name)
+            except KeyError:
+                pass
+                
+        if not isinstance(data,t):
+            if issubclass(t,DataObject):
+                data = t(parent = self.parent,data = data, context = self.parent.context)
+            else:
+                data = t(data)
+
+        return data
+        
+    def __getitem__(self,key):
+        self.ensure_items()
+        return self._items[key]
+                    
+    def __setitem__(self,key,value):
+        self.ensure_items()
+        
+        self._items[key]
+        
+    def __delitem__(self,key):
+        self.ensure_items()
+        del self._items[key]
+        del self._inner[key]
+        
+    def __iter__(self):
+        self.ensure_items()
+        for x in self._items:
+            yield x
+            
+    def __len__(self):
+        self.ensure_items()
+        return len(self._items)
+        
+@known_type('list')
+class ObjectList(ObjectCollection):
+    def load_items(self):
+        return [ self.make_item(d) for d in self._inner ]
+        
+@known_type('dict')
+class ObjectDict(ObjectCollection):
+    def load_items(self):
+        return { k: self.make_item(v) for k,v in self._inner.items() }
+        
+
     
