@@ -1,8 +1,8 @@
 from apininja.controllers import Controller
 from apininja.log import log
 from apininja.actions import *
-from apininja.security.users import *
-import os, time
+from apininja.security import *
+import os, time, datetime
 import mimetypes
 import email.utils
 
@@ -16,10 +16,14 @@ class LoginController(Controller):
             
             
     def locate_resource(self,path):
-        return Login()
+        l = find_type('login')
+        return l(context=self.context)
 
     def get_allowed_actions(self,resource):
-        return [GET,CREATE]
+        return [GET, CREATE, DELETE]
+        
+    def can_access_resource(self,resource):
+        return True
             
     def create(self, resource):
         db = self.app.get_database(self.database,self.context)
@@ -35,12 +39,30 @@ class LoginController(Controller):
         
         password = data['password']
         
+        self.context.user = root
+        
         user, token = users.login(email,password)
         assert user.id
-        #log.debug('found user %s',user)
         data = {'user':user, 'token':token}
         
         return data
         
     def get(self, resource):
         return resource
+        
+    def delete(self, resource):
+        if not self.context.user:
+            self.response.unauthorized()
+    
+        db = self.app.get_database(self.database,self.context)
+        users = db.get('users')
+        
+        user = self.context.user
+        token = self.request.variables['token']
+        for ix,t in enumerate(user.tokens):
+            if token == t.id:
+                del user.tokens[ix]
+        users.update(user)
+        
+        self.response.variables['token'] = ' ;expires=' + str( datetime.datetime.now() )
+        return None

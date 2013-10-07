@@ -44,7 +44,6 @@ class StaticContentController(Controller):
         return datetime.datetime.utcfromtimestamp(os.path.getmtime(resource))
         
     def get_allowed_actions(self,resource):
-        print(resource)
         if os.path.isdir(resource):
             l= [GET]
             if self.allow_directory_listing:

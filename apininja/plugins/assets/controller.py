@@ -3,7 +3,7 @@ from apininja.data import *
 from apininja.log import log
 from apininja.actions import *
 from apininja.mime_types import *
-import os, time
+import os, time, datetime
 
 
 class AssetController(EditableContentController):
@@ -69,13 +69,15 @@ class AssetController(EditableContentController):
         content_path = os.path.join(app_root,self.content_folder)
         
         raw_file = self.request.data
-        filename = self.request.variables['filename'].lower()
+        orig_filename = self.request.variables['filename']
+        filename = orig_filename.lower()
         
         fn,ext = os.path.splitext(filename)
         filename = 'source'+ext
         
         uid = self.context.user.id
         path = os.path.join(content_path,str(uid))
+        
         
         data = {
             'original_filename':fn,
@@ -85,12 +87,12 @@ class AssetController(EditableContentController):
             'filename':filename,
             'file_size':len(raw_file),
             'rotation':0,
+            'date':datetime.datetime.utcnow(),
+            'title': os.path.splitext(orig_filename)[0],
             '_t':self.container.item_type
             }
         
         asset = self.container.create(data)
-        #log.debug('asset type %s',type(asset))
-        #log.debug('container type %s, %s',type(self.container),self.container.item_type)
         asset_id = asset.id
         
         path = os.path.join(path,str(asset_id))
@@ -99,7 +101,6 @@ class AssetController(EditableContentController):
         try:
             
             with open(path,'wb') as file:
-                #log.debug('Writing %d bytes to %s',len(raw_file),path)
                 file.write(raw_file)
                 file.flush()
                 file.close()

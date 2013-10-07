@@ -28,9 +28,7 @@ class DataController(Controller):
     def locate_resource(self,path):
         working = self.db.system_container
         for p in path:
-            #log.debug('Looking for data fragment %s',p)
             working = working.get(p)
-            #log.debug('Found item of type %s',type(working))
             if not working:
                 self.response.not_found()
             assert working.id
@@ -69,7 +67,6 @@ class DataController(Controller):
         data = self.context.request.data
         resource = resource.parent
         data = resource.update(data)
-        #log.debug('controller returned %s',data._data)
         return data
         
     def delete(self, resource):

@@ -33,17 +33,21 @@ def islambda(obj):
     return isinstance(obj, type(lambda: None)) and obj.__name__ == '<lambda>'
     
 def convert_date(value):
-    if isinstance(value,str):
+    if value is None:
+        return None
+    elif isinstance(value,str):
         return time.strptime(value.split('.')[0],'%Y-%m-%dT%H:%M:%S')
     elif isinstance(value,int):
         return datetime.datetime.fromtimestamp(value)
     elif isinstance(value,time.struct_time):
         value = time.mktime(value)
         return datetime.datetime.fromtimestamp(value)
-    elif value is None:
-        return None
+    elif isinstance(value,list):
+        value = time.struct_time(value)
+        value = time.mktime(value)
+        return datetime.datetime.fromtimestamp(value)
     else:
-        raise TypeError('cannot convert date for %s: %s'%(self.name,value))
+        raise TypeError('cannot convert date %s'%(value))
     
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')

@@ -41,6 +41,7 @@ try:
             client.close()
             
         def format_query(self, query, **options):
+            output = {}
             for k,v in query.items():
                 if isinstance(v,str):
                     try:
@@ -82,7 +83,7 @@ try:
                 data = command.data
                 del data['_id']
                 update = {'$set': data}
-                #log.debug('mongo running find_and_modify(%s,%s)',query,update)
+                log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=True,new=True)
                 #log.debug('updated %s to  %s',existing, r)
                 assert r['_id']

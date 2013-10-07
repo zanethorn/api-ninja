@@ -3,6 +3,7 @@ import hashlib, base64, hmac
 from apininja.log import log
 from apininja.data.formatters import *
 from apininja.data import *
+from apininja.security import unauthorized
 
 class StopExecutionException(Exception):
     pass
@@ -77,9 +78,21 @@ class RequestContext():
                 try:
                     t = data['_t']
                     data_type = find_type(t)
-                    data = data_type(data = data, context=self.context)
+                    source = { '_t':t }
+                    try:
+                        source['_id'] = data['_id']
+                    except KeyError:
+                       pass
+                    obj = data_type(data = source, context=self.context)
+                    for attr in data_type.__attributes__:
+                        try:
+                            val  = data[attr.name]
+                            setattr(obj,attr.name,val)
+                        except:
+                           pass
+                    data = obj
                 except KeyError:
-                    pass
+                   pass
             self._data = data
             return data
         return None
@@ -238,14 +251,15 @@ class ResponseContext():
         
 
 class ExecutionContext():
-    endpoint = None
-    controller = None
-    action = ''
-    app = None
-    user = None
+    
     # variables = {}
     
     def __init__(self,request,response):
+        self.endpoint = None
+        self.controller = None
+        self.action = ''
+        self.user = unauthorized
+        
         self.request = request
         self.response = response
         

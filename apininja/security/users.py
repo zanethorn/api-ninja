@@ -42,6 +42,9 @@ class Login(DataObject):
     email = attribute('email', type='str')
     password = attribute('password', type='str')
     
+    def can_read(self,context):
+        return True
+    
 @known_type('users')
 class Users(DataContainer):
     item_type = 'user'
@@ -114,7 +117,7 @@ class Users(DataContainer):
         if isinstance(obj,dict):
             data = obj
         elif isinstance(obj,DataObject):
-            data = obj.to_write_dict()
+            data = obj.to_simple(can_write = True)
         else:
             raise TypeError('Expected DataObject, got %s',type(obj).__name__)
             
@@ -181,6 +184,8 @@ class Users(DataContainer):
             return id
         if id == 'me':
             log.debug('Looking for \'me\' with id %s',self.context.user)
+            if not self.context.user:
+                self.context.response.unauthorized()
             return {'_id':self.context.user.id}
         elif re.match(r'^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$',str(id),re.I):
             return {'email':id}

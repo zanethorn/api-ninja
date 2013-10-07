@@ -91,7 +91,7 @@ class DataContainer(DataObject):
         if isinstance(obj,dict):
             data = obj
         elif isinstance(obj,DataObject):
-            data = obj.to_write_dict()
+            data = obj.to_simple(can_write = True, server_only=True)
         else:
             raise TypeError('Expected DataObject, got %s',type(obj).__name__)
         
@@ -114,7 +114,7 @@ class DataContainer(DataObject):
         if isinstance(obj,dict):
             data = obj
         elif isinstance(obj,DataObject):
-            data = obj.to_write_dict()
+            data = obj.to_simple(can_write=True, server_only=True)
         else:
             raise TypeError('Expected DataObject, got %s',type(obj).__name__)
             

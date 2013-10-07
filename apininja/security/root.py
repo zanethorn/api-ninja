@@ -10,3 +10,6 @@
     @property
     def parent(self):
         return self
+
+    def __bool__(self):
+        return True

@@ -71,7 +71,7 @@ class DataAttribute():
                     if not item:
                         item = {}
                         obj._data[self.name] = item
-                    item = t(item)
+                    item = t(parent=obj,data=item,context=obj.context)
                 elif t is datetime.datetime:
                     item = convert_date(item)
                 else:
@@ -100,10 +100,22 @@ class DataAttribute():
         elif isinstance(value,DataObject):
             value = value._data
             
-        elif isinstance(value,list) or isinstance(value,dict):
+        elif isinstance(value,list):
+            if self.type == 'list':
+                if self.item_type:
+                    it = find_type(self.item_type)
+                    if issubclass(it,DataObject):
+                        pass
+                    elif it is datetime.datetime:
+                        value = [ convert_date(i) for i in value]
+                    else:
+                        value = [ it(i) for i in value]
+            else:
+                raise TypeError('No clue what is going on here')
+        elif isinstance(value,dict):
             pass
             
-        elif not isinstance(value,t):
+        elif t and not isinstance(value,t):
             if t is datetime.datetime:
                 item = convert_date(item)
             else:
@@ -272,9 +284,15 @@ class DataObject(metaclass = DataObjectType):
     write_roles = attribute('write_roles',type='list',item_type='str',default=[],server_only = True)
     
     def __init__(self,parent=None,data={}, context=None):
+        assert isinstance(data,dict)
+        if not context and parent:
+            context = parent.context
+        
         self._parent = parent
         self._data = data
         self._context = context
+        
+        assert context
         if not '_t' in data:
             self._data['_t'] = type(self).__name__
         
@@ -296,12 +314,13 @@ class DataObject(metaclass = DataObjectType):
     def parent(self):
         return self._parent
         
-    def to_dict(self):
+    def to_simple(self,context=None, can_write=False, server_only = False):
         t = type(self)
+        if context is None:
+            context = self.context
         attrs = t.__attributes__
         output = { }
-        assert self.id
-        
+
         try:
             output['_t'] = self._data['_t']
         except KeyError:
@@ -310,38 +329,24 @@ class DataObject(metaclass = DataObjectType):
         output['_id'] = self.id
             
         for a in attrs:
-            if a.can_read(self.context) and not a.server_only:
-                output[a.name] = getattr(self,a.name)
-        
-        return output
-    
-    def to_write_dict(self):
-        t = type(self)
-        attrs = t.__attributes__
-        output = {}
-        #assert self.id
-        try:
-            output['_t']= self._data['_t']
-        except KeyError:
-            output['_t'] = type(self).__name__
-        
-        output['_id'] = self.id
-            
-        for a in attrs:
-            try:
-                if str(self.id) == str(self.context.user.id):
-                    output[a.name] = self._data[a.name]
-                elif a.can_write(self.context):
-                    output[a.name] = self._data[a.name]
-                else:
-                    try:
-                        owner_id = self.owner['_id']
-                        if str(owner_id) == str(self.context.user.id):
+            if can_write:
+                if a.can_write(context):
+                    if server_only or not a.server_only:
+                        try:
                             output[a.name] = self._data[a.name]
-                    except AttributeError:
-                        pass
-            except KeyError:
-                pass
+                            if a.data_type and issubclass(a.data_type,ObjectCollection):
+                                output['_'+a.name] = self._data['_'+a.name]
+                        except KeyError:
+                            pass
+            else:
+                if a.can_read(context):
+                    if server_only or not a.server_only:
+                        try:
+                            output[a.name] = getattr(self,a.name)
+                            if a.data_type and issubclass(a.data_type,ObjectCollection):
+                                output['_'+a.name] = self._data['_'+a.name]
+                        except KeyError:
+                            pass
         return output
         
     def can_read(self,context = None):
@@ -371,9 +376,9 @@ class ObjectCollection(DataObject):
     item_type = attribute()
     field = attribute(required=True)
     
-    def __init__(self,parent=None, data={}, context=None, inner=None ):
+    def __init__(self,parent=None, metadata={}, context=None, inner=None ):
         self.item_data_type = None
-        super().__init__(parent,data,context)
+        super().__init__(parent,metadata,context)
         if self.item_type:
             self.item_data_type = find_type(self.item_type)
         self._inner = inner
@@ -413,13 +418,16 @@ class ObjectCollection(DataObject):
 
         return data
         
+    def to_simple(self,context=None, can_write=False, server_only = False):
+        #self.ensure_items()
+        return self._inner
+        
     def __getitem__(self,key):
         self.ensure_items()
         return self._items[key]
                     
     def __setitem__(self,key,value):
         self.ensure_items()
-        
         self._items[key]
         
     def __delitem__(self,key):
@@ -440,6 +448,16 @@ class ObjectCollection(DataObject):
 class ObjectList(ObjectCollection):
     def load_items(self):
         return [ self.make_item(d) for d in self._inner ]
+        
+    def append(self,item):
+        self.ensure_items()
+        self._items.append(item)
+        self._inner.append(item._data)
+        
+    def remove(self,item):
+        self.ensure_items()
+        self._items.remove(item)
+        self._inner.remove(item._data)
         
 @known_type('dict')
 class ObjectDict(ObjectCollection):

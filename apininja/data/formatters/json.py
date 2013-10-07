@@ -12,16 +12,15 @@ except ImportError:
     
 def handle_default(item):
     if isinstance(item,datetime):
-        return item.isoformat()
+        #item.microsecond = 0
+        return item.strftime("%Y-%m-%dT%H:%M:%SZ")
     elif isinstance(item,DBRef):
         return {'collection':item.collection,'_id':item.id,'_t':'ref'}
-    elif isinstance(item,ObjectCollection):
-        return item._items
     elif isinstance(item,DataObject):
-        if not item.id:
-            log.error('%s does not have an id',item)
-            raise RuntimeError()
-        return item.to_dict()
+        # if not item.id:
+            # log.error('%s does not have an id',item)
+            # raise RuntimeError()
+        return item.to_simple()
     else:
         try:
             s= str(item)
