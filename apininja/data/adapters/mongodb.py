@@ -86,7 +86,7 @@ try:
                 log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=True,new=True)
                 #log.debug('updated %s to  %s',existing, r)
-                assert r['_id']
+                #assert r['_id']
                 return r
                 
             elif command.action == DELETE:
