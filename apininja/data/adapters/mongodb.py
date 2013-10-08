@@ -65,7 +65,9 @@ try:
                 query  = self.format_query(command.query)
                 #log.debug('mongo running find_one(%s)',query)
                 r = container.find_one(query)
-                #assert r['_id']
+                if not r:
+                    return None
+                assert r['_id']
                 return r
                 
             elif command.action == CREATE:
@@ -86,7 +88,9 @@ try:
                 log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=True,new=True)
                 #log.debug('updated %s to  %s',existing, r)
-                #assert r['_id']
+                if not r:
+                    return None
+                assert r['_id']
                 return r
                 
             elif command.action == DELETE:
