@@ -59,6 +59,7 @@ class StaticContentController(Controller):
         if os.path.isdir(resource):
             return self.list(resource)
             
+        log.debug('%s is returning file %s',self.name,resource)
         with open(resource,'rb') as file:
             return file.read()
             
