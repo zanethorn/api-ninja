@@ -301,7 +301,9 @@ class ApiApplication(Configurable):
                     pass
                 
                 if not formats:
-                    formats = context.request.allowed_types
+                    formats = context.request.allowed_types + formats
+                    
+                formats += [ context.request.mime_type ]
         else:
             formats = [ context.request.mime_type ]        
         
