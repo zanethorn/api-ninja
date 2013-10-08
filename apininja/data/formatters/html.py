@@ -9,10 +9,10 @@ def get_user_attributes(item):
     
 default_template_path = 'apininja/data/formatters/template.html'
     
-class HtmlFormatter(Formatter):
-    mime_types=['text/html']
-    format='html'
-    template_path = ''
+# class HtmlFormatter(Formatter):
+    # mime_types=['text/html']
+    # format='html'
+    # template_path = ''
 
     # def decode(self,data,**kwargs):
         # raw= urllib.parse.parse_qs(data)

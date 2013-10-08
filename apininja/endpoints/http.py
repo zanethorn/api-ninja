@@ -6,14 +6,14 @@ from copy import deepcopy
 import http.client, urllib.parse
 import io, datetime, gzip, zlib
 import email.utils
-from apininja.data.formatters.html import *
+#from apininja.data.formatters.html import *
 
 
 class HttpEndpoint(TcpEndpoint):
     secure_protocol = 'https'
     max_request_length = 65536
     user_database = ''
-    default_formatter = HtmlFormatter
+    #default_formatter = HtmlFormatter
     
     action_map= {
         'HEAD':GET,
