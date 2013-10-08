@@ -136,7 +136,7 @@ class ResponseContext():
         else:
             formatter = self.app.get_formatter(self.context,True)
             if formatter:
-                #log.debug('Encoding data with %s',type(formatter).__name__)
+                log.debug('Encoding data with %s',type(formatter).__name__)
                 self._data_stream = formatter.encode(self.data)
             else:
                 self.not_acceptable()
