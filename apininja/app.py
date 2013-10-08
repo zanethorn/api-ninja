@@ -307,7 +307,7 @@ class ApiApplication(Configurable):
         else:
             formats = [ context.request.mime_type ]        
         
-        #log.debug('Finding formatter for %s',formats)
+        log.debug('Finding formatter for %s',formats)
         format_type = None
         for t in formats:
             for f in types:
