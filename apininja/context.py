@@ -130,7 +130,8 @@ class ResponseContext():
             
         if not self._data:
             return None
-            
+        
+        log.debug('Outgoing context data type %s',type(self.data))
         if isinstance(self.data,bytes):
             self._data_stream = self.data
         else:
