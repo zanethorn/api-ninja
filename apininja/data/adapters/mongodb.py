@@ -75,7 +75,8 @@ try:
                 if '_id' in data:
                     del data['_id']
                 id = container.insert(data, manipulate=True)
-                data['_id'] = id
+                if id:
+                    data['_id'] = id
                 #assert data['_id']
                 return data
                 
