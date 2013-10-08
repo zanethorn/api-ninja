@@ -76,7 +76,7 @@ try:
                     del data['_id']
                 id = container.insert(data, manipulate=True)
                 data['_id'] = id
-                assert data['_id']
+                #assert data['_id']
                 return data
                 
             elif command.action == UPDATE:
