@@ -9,7 +9,7 @@ from .server import SecureServer
 from .controllers import ControllerMetaclass
 from .endpoints import EndpointMetaclass
 from .data.adapters import AdapterMetaclass
-from .data.formatters import FormatterMetaclass, map_formats
+from .data.formatters import FormatterMetaclass, map_format
 from .data.database import DatabaseMetaclass, Database
 from .security import User, Users
 from .plugins import *
