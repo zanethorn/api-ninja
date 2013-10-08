@@ -83,6 +83,7 @@ try:
                 query  = self.format_query(command.query)
                 existing = container.find_one(query)
                 data = command.data
+                id = data['_id']
                 del data['_id']
                 update = {'$set': data}
                 log.debug('mongo running find_and_modify(%s,%s)',query,update)
@@ -90,7 +91,10 @@ try:
                 #log.debug('updated %s to  %s',existing, r)
                 if not r:
                     return None
-                assert r['_id']
+                try:
+                    assert r['_id']
+                except KeyError:
+                    r['_id'] = id
                 return r
                 
             elif command.action == DELETE:
