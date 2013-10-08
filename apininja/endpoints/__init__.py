@@ -137,6 +137,8 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
             #traceback.print_last(limit=3)
             log.warning('Endpoint %s stopped with %d',self.name,response.status)
         except Exception as ex:
+            if __debug__:
+                raise
             log.error('Endpoint %s encoutered error %s',self.name, ex)
             traceback.print_exc()
             if isinstance(ex,NotImplementedError):
@@ -279,6 +281,8 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
             try:
                 self.handle_request(connection,client_addr)
             except Exception as ex:
+                if __debug__:
+                    raise
                 self.handle_error(connection,client_addr,ex)
             finally:
                 self.finalize_connection(connection)
