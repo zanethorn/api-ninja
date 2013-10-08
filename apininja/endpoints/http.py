@@ -95,6 +95,8 @@ class HttpEndpoint(TcpEndpoint):
         except AttributeError:
             pass
                 
+        log.debug('Request headers %s',request.variables)
+                
         request.uri = urllib.parse.urlparse(path)
         request.full_path = request.uri.path.lower()
         request.path = list(filter(lambda i:i,request.full_path.split('/')))
