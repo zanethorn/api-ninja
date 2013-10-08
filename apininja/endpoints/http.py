@@ -111,7 +111,7 @@ class HttpEndpoint(TcpEndpoint):
                     request.query[name] = val
                     
         #context.variables.update(request.query)
-        #context.variables.update(request.options)
+        context.variables.update(request.options)
                 
     def format_response(self,context):
         request = context.request
