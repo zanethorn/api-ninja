@@ -97,7 +97,7 @@ class Users(DataContainer):
         
         token = AccessToken(parent=user,data=token_data,context=self.context)
         self.response.variables['token'] = token.id
-        log.debug('User %s logged in',email)
+        log.info('User %s logged in',email)
         return user, token
         
     def list(self,query={},limit=None,skip=0,select=None,**options):
@@ -155,8 +155,9 @@ class Users(DataContainer):
             if self.request.options['login']:
                 log.debug('Also logging in...')
                 new_user, token = self.login(email,password)
-        except KeyError as err:
-            log.error('Could not login user due to key error %s',err)
+        except KeyError:
+            pass
+            #log.error('Could not login user due to key error %s',err)
         return new_user
         
     def reset_password(self,email):
@@ -192,7 +193,6 @@ class Users(DataContainer):
         if isinstance(id,dict):
             return id
         if id == 'me':
-            log.debug('Looking for \'me\' with id %s',self.context.user)
             if not self.context.user:
                 self.context.response.unauthorized()
             return {'_id':self.context.user.id}
