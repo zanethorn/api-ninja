@@ -103,7 +103,7 @@ class Users(DataContainer):
     def list(self,query={},limit=None,skip=0,select=None,**options):
         if 'search' in query:
             s = query['search']
-            r = re.compile('^%s'%s,re.I)#{'$regex':'^%s'%s}
+            r = re.compile('^%s'%s,re.I)
             query = { 
                 '$or':  [
                         {'first_name':r},
@@ -112,7 +112,10 @@ class Users(DataContainer):
                     ]
                 }
         
-        return super().list(query,limit,skip,select,**options)
+        l = super().list(query,limit,skip,select,**options)
+        if 'search' in query:
+            l = [ u.to_summary() for u in l ]
+        return l
         
     def create(self,obj):
         if isinstance(obj,dict):
