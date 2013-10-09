@@ -89,7 +89,8 @@ try:
                 update = {'$set': data}
                 log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=True,new=True)
-                log.debug('updated %s to %s',existing, r)
+                if r['_t'] == 'asset':
+                    log.debug('updated %s',existing, r)
                 if not r:
                     return None
                 try:
