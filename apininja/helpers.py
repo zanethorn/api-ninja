@@ -36,7 +36,7 @@ def convert_date(value):
     if value is None:
         return None
     elif isinstance(value,str):
-        return time.strptime(value.split('.')[0],'%Y-%m-%dT%H:%M:%S')
+        return time.strptime(value.split('.')[0].strip('Z'),'%Y-%m-%dT%H:%M:%S')
     elif isinstance(value,int):
         return datetime.datetime.fromtimestamp(value)
     elif isinstance(value,time.struct_time):

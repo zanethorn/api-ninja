@@ -149,6 +149,8 @@ class DataAttribute():
         user = context.user
         if user.id == 'root':
             return True
+        if not self.read_roles:
+            return True
         for r1 in user.roles:
             if r1 == 'root':
                 return True
@@ -333,15 +335,19 @@ class DataObject(metaclass = DataObjectType):
                 if a.can_write(context):
                     if server_only or not a.server_only:
                         try:
-                            output[a.name] = self._data[a.name]
+                            val = getattr(self,a.name)
                             if a.data_type and issubclass(a.data_type,ObjectCollection):
                                 output['_'+a.name] = self._data['_'+a.name]
+                            if isinstance(val,DataObject):
+                                val = val.to_simple(context = context, can_write= can_write,server_only = server_only)
+                            output[a.name] = val
                         except KeyError:
                             pass
             else:
                 if a.can_read(context):
                     if server_only or not a.server_only:
                         try:
+                            
                             output[a.name] = getattr(self,a.name)
                             if a.data_type and issubclass(a.data_type,ObjectCollection):
                                 output['_'+a.name] = self._data['_'+a.name]
@@ -456,8 +462,15 @@ class ObjectList(ObjectCollection):
         
     def remove(self,item):
         self.ensure_items()
-        self._items.remove(item)
-        self._inner.remove(item._data)
+        for ix, i in enumerate(self._items):
+            if item.id == i.id:
+                del self._items[ix]
+                break
+                
+        for ix, i in enumerate(self._inner):
+            if item._data == i:
+                del self._inner[ix]
+                break
         
 @known_type('dict')
 class ObjectDict(ObjectCollection):

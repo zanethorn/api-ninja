@@ -12,5 +12,9 @@ class UnauthorizedUser():
     def parent(self):
         return root
         
+    @property
+    def roles(self):
+        return []
+        
     def __bool__(self):
         return False

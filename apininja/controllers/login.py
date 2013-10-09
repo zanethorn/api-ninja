@@ -42,6 +42,8 @@ class LoginController(Controller):
         self.context.user = root
         
         user, token = users.login(email,password)
+        if not user:
+            self.response.send_error(self.context.endpoint.STATUS_UNAUTHORIZED,'Invalid Email address or Password')
         assert user.id
         data = {'user':user, 'token':token}
         

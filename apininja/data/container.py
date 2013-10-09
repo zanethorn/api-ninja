@@ -110,11 +110,11 @@ class DataContainer(DataObject):
         assert result.id
         return result
         
-    def update(self,obj):
+    def update(self,obj, server_only = False):
         if isinstance(obj,dict):
             data = obj
         elif isinstance(obj,DataObject):
-            data = obj.to_simple(can_write=True, server_only=True)
+            data = obj.to_simple(can_write=True, server_only=server_only)
         else:
             raise TypeError('Expected DataObject, got %s',type(obj).__name__)
             

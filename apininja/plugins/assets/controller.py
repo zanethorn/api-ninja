@@ -78,7 +78,6 @@ class AssetController(EditableContentController):
         uid = self.context.user.id
         path = os.path.join(content_path,str(uid))
         
-        
         data = {
             'original_filename':fn,
             'original_extension':ext,
@@ -89,7 +88,8 @@ class AssetController(EditableContentController):
             'rotation':0,
             'date':datetime.datetime.utcnow(),
             'title': os.path.splitext(orig_filename)[0],
-            '_t':self.container.item_type
+            '_t':self.container.item_type,
+            'owner_id':self.context.user.id
             }
         
         asset = self.container.create(data)
@@ -106,9 +106,9 @@ class AssetController(EditableContentController):
                 file.close()
             
             asset.path = path
-            asset.uri = '/%s/%s/%s/%s'%(self.content_folder,uid,asset.id,filename)
-            asset = self.container.update(asset)
-            log.debug('Returning asset with id %s',asset.id)
+            asset._data['uri'] = '/%s/%s/%s/%s'%(self.content_folder,uid,asset.id,filename)
+            asset = self.container.update(asset, server_only=True)
+            log.debug('Returning asset with id %s uri %s',asset.id,asset.uri)
             return asset
         except:
             self.container.delete(asset)

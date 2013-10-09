@@ -19,6 +19,31 @@ class Asset(DataObject):
     path = attribute(type='str', server_only=True)
     title = attribute(type='str')
     date = attribute(type='datetime')
+    owner_id = attribute(readonly=True)
+    
+    def can_read(self,context):
+        if not context:
+            context = self.context
+            
+        if not context:
+            return True
+            
+        if context.user.id == self.owner_id:
+            return True
+            
+        return super().can_read(context)
+        
+    def can_write(self,context):
+        if not context:
+            context = self.context
+            
+        if not context:
+            return True
+            
+        if context.user.id == self.owner_id:
+            return True
+            
+        return super().can_read(context)
 
 @known_type('assets')    
 class Assets(DataContainer):

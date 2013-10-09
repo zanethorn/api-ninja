@@ -4,6 +4,7 @@ from datetime import *
 import hashlib, re
 
 def hash_password(password,salt):
+    #log.debug('password: %s, salt: %s', password, salt)
     hasher = hashlib.sha512(bytes(salt,'utf-8'))
     hasher.update(bytes(password,'utf-8'))
     hashed = hasher.digest()
@@ -18,7 +19,7 @@ class AccessToken(DataObject):
     
 @known_type('user')
 class User(DataObject):
-    email=attribute('email', type='str')
+    email=attribute('email', type='str', readonly=True)
     name=attribute('name', type='str')
     password = attribute('password', server_only = True)
     last_login = attribute('last_login',type='datetime', server_only = True)
@@ -67,7 +68,7 @@ class Users(DataContainer):
            if result['failed_logins'] >= int(config['RULES']['failed_logins']):
                result['locked'] = True
                result['tokens']=[]
-           self.update(result)
+           self.update(result, server_only=True)
            log.debug('User %s failed to logged in',email)
            return None,None
 
@@ -79,8 +80,8 @@ class Users(DataContainer):
         result['password'] = hashed
         
         tokens = result['tokens'] 
-        # for t in list(filter(lambda t: t['expires'] < now, tokens)):
-            # tokens.remove(t)
+        for t in list(filter(lambda t: t['expires'] < now, tokens)):
+            tokens.remove(t)
         
         token_data = {
             '_id':random_string(40),
@@ -90,7 +91,7 @@ class Users(DataContainer):
          
         tokens.append(token_data)
         result['tokens'] = tokens
-        user = self.update(result)
+        user = self.update(result, server_only=True)
         
         self.context.user = user
         
@@ -155,7 +156,7 @@ class Users(DataContainer):
                 log.debug('Also logging in...')
                 new_user, token = self.login(email,password)
         except KeyError as err:
-            log.debug('Could not login user due to key error %s',err)
+            log.error('Could not login user due to key error %s',err)
         return new_user
         
     def reset_password(self,email):
@@ -177,7 +178,15 @@ class Users(DataContainer):
         return {'message':'Password has been reset'}
         
     def get_user_by_token(self,token):
-        return self.get({'tokens':{'$elemMatch':{'_id':token}}})
+        user = self.get({'tokens':{'$elemMatch':{'_id':token}}})
+        if not user:
+            return None
+        token = list(filter(lambda t: t.id == token, user.tokens))[0]
+        now = datetime.utcnow()
+        token.expires = now+timedelta(minutes=60)
+        user.last_activity = now
+        user = self.update(user, server_only=True)
+        return user
     
     def get_id_query(self,id):
         if isinstance(id,dict):

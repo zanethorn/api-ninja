@@ -55,13 +55,18 @@ class HttpEndpoint(TcpEndpoint):
         
         log.debug('%s got request %s',self.name,requestline)
         parts = requestline.split()
+        command = None
+        path = None
+        version = None
         if len(parts) == 3:
             command, path, version = parts
             if version[:5] != 'HTTP/':
                 response.send_error(self.STATUS_BAD_REQUEST, "Bad request version (%r)" % version)
             if not command:
                 response.send_error(self.STATUS_BAD_REQUEST, "Bad request version (%r)" % version)
-                
+        elif len(parts) == 2:
+            command, path = parts
+            version = 'HTTP/0.9'
         request.command = command.upper()
         request.version = version
 
