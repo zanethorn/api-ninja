@@ -89,9 +89,14 @@ try:
                 update = {'$set': data}
                 log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=True,new=True)
-                if r['_t'] == 'asset':
-                    log.debug('updated %s',existing, r)
+                try:
+                    if r['_t'] == 'asset':
+                        log.debug('updated %s',existing, r)
+                except:
+                    pass
+                log.debug('server returned %s',r)
                 if not r:
+                    
                     return None
                 try:
                     assert r['_id']
