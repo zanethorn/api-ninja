@@ -17,6 +17,11 @@ def generate_salt():
 class AccessToken(DataObject):
     expires = attribute('expires',type='datetime')
     
+@known_type('user_summary')
+class UserSummary(DataObject):
+    name = attribute('name',type='str', required = True)
+    uri = attribute('uri',type='str')
+    
 @known_type('user')
 class User(DataObject):
     email=attribute('email', type='str', readonly=True)
@@ -36,6 +41,18 @@ class User(DataObject):
         hashed = hash_password(password,salt)
         self._data['salt'] = salt
         self._data['password'] = hashed
+        
+    def to_summary(self):
+        d= {
+            'name':self.name,
+            'created':self.created,
+            'last_updated':self.last_updated,
+            '_id':self.id,
+            '_t':'user_summary',
+            }
+        if self.profile_photo:
+            d['uri'] = self.profile_photo.uri
+        return UserSummary(parent = self,data = d,context = self.context)
     
     
 @known_type('login')
@@ -203,3 +220,4 @@ class Users(DataContainer):
         elif re.match(r'^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$',str(id),re.I):
             return {'email':id}
         return {'_id':id}
+        
