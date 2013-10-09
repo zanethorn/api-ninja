@@ -11,14 +11,7 @@ class EndpointMetaclass(SelfRegisteringType):
     extension = 'Endpoint'
 
 class Endpoint(Configurable, metaclass = EndpointMetaclass):
-    address = 'localhost'
-    port = 80
-    name = ''
-    protocol = ''
-    in_buffer_size = -1
-    out_buffer_size = 0
-    action_map = {}
-    default_formatter = None
+    
     
     # status constants, override for specific protocols
     STATUS_SUCCESS = 0
@@ -35,6 +28,15 @@ class Endpoint(Configurable, metaclass = EndpointMetaclass):
     def __init__(self,app, config=None):
         if self.__class__ == Endpoint:
             raise TypeError('Endpoint is abstract')
+        self.address = 'localhost'
+        self.port = 80
+        self.name = ''
+        self.protocol = ''
+        self.in_buffer_size = -1
+        self.out_buffer_size = 0
+        self.action_map = {}
+        self.default_formatter = None
+            
         super().__init__(config)
         self.app = app
         self._running = False
