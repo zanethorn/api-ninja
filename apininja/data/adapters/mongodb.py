@@ -90,7 +90,7 @@ try:
                 #log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=True,new=True)
                 try:
-                    log.debug('updated %s', r)
+                    log.debug('updated %s, %s', r, type(r))
                 except:
                     pass
                 log.debug('server returned %s',r)
