@@ -347,10 +347,12 @@ class DataObject(metaclass = DataObjectType):
                 if a.can_read(context):
                     if server_only or not a.server_only:
                         try:
-                            
-                            output[a.name] = getattr(self,a.name)
+                            val = getattr(self,a.name)
                             if a.data_type and issubclass(a.data_type,ObjectCollection):
                                 output['_'+a.name] = self._data['_'+a.name]
+                            if isinstance(val,DataObject):
+                                val = to_simple(context = context, can_write= can_write,server_only = server_only)
+                            output[a.name] = val
                         except KeyError:
                             pass
         return output
