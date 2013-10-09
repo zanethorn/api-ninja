@@ -87,11 +87,10 @@ try:
                 id = data['_id']
                 del data['_id']
                 update = {'$set': data}
-                log.debug('mongo running find_and_modify(%s,%s)',query,update)
+                #log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=True,new=True)
                 try:
-                    if r['_t'] == 'asset':
-                        log.debug('updated %s',existing, r)
+                    log.debug('updated %s', r)
                 except:
                     pass
                 log.debug('server returned %s',r)
