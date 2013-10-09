@@ -58,11 +58,13 @@ class AssetController(EditableContentController):
         if os.path.isdir(content_path):
             return (content_path, None)
             
-        asset = self.container.get(content_path)
+        uid = path[1]
+        id = path[2]
+        asset = self.container.get(id)
         if not asset:
             self.response.not_found()
             
-        return (content_path,None)
+        return (content_path,asset)
             
     def create(self, resource):
         app_root = self.context.app.app_root
