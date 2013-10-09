@@ -144,6 +144,7 @@ class AssetController(EditableContentController):
         asset = resource[1]
         
         if not os.path.exists(path):
+            log.debug('Could not find asset at %s',path)
             self.response.not_found()
             
         ix = path.rfind('.')
