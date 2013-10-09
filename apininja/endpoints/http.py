@@ -38,6 +38,17 @@ class HttpEndpoint(TcpEndpoint):
     STATUS_CONFLICT = 409
     STATUS_INTERNAL_ERROR  = 500
     STATUS_NOT_IMPLEMENTED = 501
+    
+    def __init__(self,app, config=None):
+        super().__init__(app,config)
+        self.address = 'localhost'
+        self.port = 80
+        self.name = ''
+        self.protocol = ''
+        self.in_buffer_size = -1
+        self.out_buffer_size = 0
+        self.action_map = {}
+        self.default_formatter = None
 
     def parse_request(self,context):
         request = context.request
