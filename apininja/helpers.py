@@ -43,6 +43,8 @@ def convert_date(value):
         value = time.mktime(value)
         return datetime.datetime.fromtimestamp(value)
     elif isinstance(value,list):
+        for ix in range(len(value)):
+            value[ix] = int(value[ix])
         value = time.struct_time(value)
         value = time.mktime(value)
         return datetime.datetime.fromtimestamp(value)
