@@ -63,7 +63,7 @@ try:
                 
             elif command.action == GET:
                 query  = self.format_query(command.query)
-                #log.debug('mongo running find_one(%s)',query)
+                log.debug('mongo running find_one(%s)',query)
                 r = container.find_one(query)
                 if not r:
                     return None
