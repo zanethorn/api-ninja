@@ -340,7 +340,10 @@ class DataObject(metaclass = DataObjectType):
                                 output['_'+a.name] = self._data['_'+a.name]
                             if isinstance(val,DataObject):
                                 val = val.to_simple(context = context, can_write= can_write,server_only = server_only)
+                            if val == a.default:
+                                continue
                             output[a.name] = val
+                            
                         except KeyError:
                             pass
             else:
