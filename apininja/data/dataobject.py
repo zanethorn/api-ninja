@@ -351,7 +351,7 @@ class DataObject(metaclass = DataObjectType):
                             if a.data_type and issubclass(a.data_type,ObjectCollection):
                                 output['_'+a.name] = self._data['_'+a.name]
                             if isinstance(val,DataObject):
-                                val = to_simple(context = context, can_write= can_write,server_only = server_only)
+                                val = val.to_simple(context = context, can_write= can_write,server_only = server_only)
                             output[a.name] = val
                         except KeyError:
                             pass
