@@ -41,14 +41,7 @@ class HttpEndpoint(TcpEndpoint):
     
     def __init__(self,app, config=None):
         super().__init__(app,config)
-        self.address = 'localhost'
-        self.port = 80
-        self.name = ''
-        self.protocol = ''
-        self.in_buffer_size = -1
-        self.out_buffer_size = 0
-        self.action_map = {}
-        self.default_formatter = None
+        
 
     def parse_request(self,context):
         request = context.request
