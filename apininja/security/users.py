@@ -103,6 +103,7 @@ class Users(DataContainer):
     def list(self,query={},limit=None,skip=0,select=None,**options):
         if 'search' in query:
             s = query['search']
+            options['search'] = True
             r = re.compile('^%s'%s,re.I)
             query = { 
                 '$or':  [
@@ -113,7 +114,7 @@ class Users(DataContainer):
                 }
         
         l = super().list(query,limit,skip,select,**options)
-        if 'search' in query:
+        if 'search' in options:
             l = [ u.to_summary() for u in l ]
         return l
         
