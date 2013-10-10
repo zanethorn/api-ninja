@@ -87,6 +87,7 @@ class DataController(Controller):
             return result
         finally:
             if self.db:
+                log.debug('closing database connection after results returned')
                 del self.db
            
     def format_content(self,content):

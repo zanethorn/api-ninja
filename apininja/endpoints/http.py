@@ -209,6 +209,7 @@ class HttpEndpoint(TcpEndpoint):
         user = users.get_user_by_token(token)
         if user:
             log.debug('Found user %s with token %s',user,token)
+        del db
         return user
         
     
