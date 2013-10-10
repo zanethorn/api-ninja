@@ -82,9 +82,9 @@ class Users(DataContainer):
         if  new_hash !=  hashed:
            result['failed_logins'] += 1
            result['last_failed_login'] = now
-           if result['failed_logins'] >= int(config['RULES']['failed_logins']):
-               result['locked'] = True
-               result['tokens']=[]
+           # if result['failed_logins'] >= int(config['RULES']['failed_logins']):
+               # result['locked'] = True
+               # result['tokens']=[]
            self.update(result, server_only=True)
            log.debug('User %s failed to logged in',email)
            return None,None
