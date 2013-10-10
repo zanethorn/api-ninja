@@ -218,8 +218,8 @@ class ResponseContext():
     def action_not_allowed(self):
         self.send_error(self.endpoint.STATUS_ACTION_NOT_ALLOWED)
         
-    def unauthorized(self):
-        self.send_error(self.endpoint.STATUS_UNAUTHORIZED)
+    def unauthorized(self,message=None):
+        self.send_error(self.endpoint.STATUS_UNAUTHORIZED,message=message)
         
     def permission_error(self):
         self.send_error(self.endpoint.STATUS_PERMISSION_ERROR)

@@ -87,7 +87,7 @@ try:
                 id = data['_id']
                 del data['_id']
                 update = {'$set': data}
-                #log.debug('mongo running find_and_modify(%s,%s)',query,update)
+                log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=False,new=True)
                 # try:
                     # log.debug('updated %s, %s', r, type(r))

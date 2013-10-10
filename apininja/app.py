@@ -1,4 +1,6 @@
-﻿import __main__
+﻿
+
+import __main__
 from .log import *
 log.info('Importing namespaces and discovering registered types')
 
