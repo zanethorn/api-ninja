@@ -21,7 +21,7 @@ try:
     db_clients = {}
     
     def get_client(server, port):
-        addr = "%s:%s" % server + port
+        addr = "%s:%s" % (server , port)
         if addr not in db_clients:
             db_clients[addr] = pymongo.MongoClient(server, int(port))
         return db_clients[addr]
