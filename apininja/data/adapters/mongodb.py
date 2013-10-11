@@ -18,6 +18,14 @@ try:
     simple_types.append(bson.objectid.ObjectId)
     DataObjectType.known_types['oid'] = bson.objectid.ObjectId
     
+    db_clients = {}
+    
+    def get_client(server, port):
+        addr = "%s:%s" % server + port
+        if addr not in db_clients:
+            db_clients[addr] = pymongo.MongoClient(server, int(port))
+        return db_clients[addr]
+    
     class MongodbAdapter(DataAdapter):
     
         def __init__(self,config=None):
@@ -32,7 +40,7 @@ try:
             port = connection['port']
             db_name = connection['database']
             
-            client = pymongo.MongoClient(server, int(port))
+            client = get_client(server,port)
             db = client[db_name]
             return db
             

@@ -53,6 +53,7 @@ class Controller(Configurable, metaclass=ControllerMetaclass):
         self.response.last_modified = last_modified
         
         if self.request.if_modified_since and last_modified:
+            print(last_modified, self.request.if_modified_since)
             if last_modified <= self.request.if_modified_since:
                 self.response.not_modified()
         

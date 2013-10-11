@@ -97,18 +97,28 @@ class HttpEndpoint(TcpEndpoint):
                 t = t.strip()
                 allowed_types.append(t)
             request.allowed_types = allowed_types
+        
         if request.allowed_compression:
             request.allowed_compression = request.allowed_compression.split(',')
+        
         if request.if_modified_since:
             request.if_modified_since = email.utils.parsedate_to_datetime(request.if_modified_since)
+            if request.if_modified_since.tzinfo:
+                request.if_modified_since = request.if_modified_since.replace(tzinfo=None)
+        
         if request.send_date:
             request.send_date = email.utils.parsedate_to_datetime(request.send_date)
+            if request.send_date.tzinfo:
+                request.send_date.tzinfo = request.send_date.replace(tzinfo=None)
+                
         if request.data_length:
             request.data_length = int(request.data_length)
+        
         if request.mime_type:
             if ';' in request.mime_type:
                 request.mime_type, _ = request.mime_type.split(';', maxsplit=1)
             request.mime_type = request.mime_type.strip()
+        
         try:
             request.variables = { p[0]:p[1] for p in map(lambda c: c.strip().split('='),request.cookie.split(';'))}
         except AttributeError:
