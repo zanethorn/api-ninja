@@ -45,8 +45,8 @@ try:
             return db
             
         def close_connection(self,connection):
-            client = connection.connection
-            client.close()
+            # client = connection.connection
+            # client.close()
             
         def format_query(self, query, **options):
             output = {}
