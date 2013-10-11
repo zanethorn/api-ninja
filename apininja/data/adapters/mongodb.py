@@ -45,6 +45,7 @@ try:
             return db
             
         def close_connection(self,connection):
+            pass
             # client = connection.connection
             # client.close()
             
