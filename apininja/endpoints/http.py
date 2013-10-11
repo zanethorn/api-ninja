@@ -121,7 +121,7 @@ class HttpEndpoint(TcpEndpoint):
         
         try:
             request.variables = { p[0]:p[1] for p in map(lambda c: c.strip().split('='),request.cookie.split(';'))}
-        except AttributeError:
+        except:
             pass
                 
         log.debug('Request headers %s',headers)
