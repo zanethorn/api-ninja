@@ -35,9 +35,12 @@ def islambda(obj):
 def convert_date(value):
     if value is None:
         return None
-    elif isinstance(value,str):
-        return time.strptime(value.split('.')[0].strip('Z'),'%Y-%m-%dT%H:%M:%S')
-    elif isinstance(value,int):
+    if isinstance(value,str):
+        if 'T' in value:
+            value= time.strptime(value.split('.')[0].strip('Z'),'%Y-%m-%dT%H:%M:%S')
+        else:
+            value= time.strptime(value,'%Y-%m-%d')
+    if isinstance(value,int):
         return datetime.datetime.fromtimestamp(value)
     elif isinstance(value,time.struct_time):
         value = time.mktime(value)
