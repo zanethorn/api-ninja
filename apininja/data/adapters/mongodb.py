@@ -67,6 +67,8 @@ try:
             if command.action == LIST:
                 query  = self.format_query(command.query)
                 cursor = container.find(query)
+                if command.sort:
+                    cursor = cursor.sort(command.sort)
                 #log.debug('mongo running find(%s)',query)
                 return DataQuery(command.container, command.context, cursor, **command.options)
                 

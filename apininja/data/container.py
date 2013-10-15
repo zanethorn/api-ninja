@@ -40,6 +40,10 @@ class DataContainer(DataObject):
     def data_adapter(self):
         return self.database.data_adapter
         
+    @property
+    def default_sort(self):
+        return '_id'
+        
     def _handle_config_value(self,name,value):
         if name == 'item_type':
             try:
@@ -67,8 +71,10 @@ class DataContainer(DataObject):
     def connect(self):
         return self.data_adapter.connect(self.connection)
 
-    def list(self,query={},limit=None,skip=0,select=None,**options):
-        cmd = self.database.make_command(LIST,self,query=query,limit=limit,skip=skip,select=select, **options)
+    def list(self,query={},limit=None,skip=0,select=None,sort=None,**options):
+        if sort is None:
+            sort = self.default_sort
+        cmd = self.database.make_command(LIST,self,query=query,limit=limit,skip=skip,select=select,sort=sort, **options)
         result = self.data_adapter.execute_command(cmd)
         return result
         
@@ -164,6 +170,8 @@ class DataContainer(DataObject):
             return id
         pid = self.data_adapter.parse_key(id)
         return {'_id':pid}
+        
+    
         
 @known_type('system_container')
 class SystemDataContainer(DataContainer):

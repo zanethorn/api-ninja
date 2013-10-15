@@ -83,7 +83,7 @@ class Database(Configurable, metaclass =DatabaseMetaclass ):
         
 
 class Command():
-    def __init__(self, database, action, container,context, query={}, data = None, select=None,**options):
+    def __init__(self, database, action, container,context, query={}, data = None, select=None,sort=None,**options):
         self.database = database
         self.action = action
         self.container = container
@@ -91,6 +91,7 @@ class Command():
         self.query = query
         self.data = data
         self.select = select
+        self.sort = sort
         for k,v in options.items():
             setattr(self,k,v)
         self.options = options

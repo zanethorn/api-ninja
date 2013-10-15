@@ -64,6 +64,14 @@ def random_string(length):
     pool = string.ascii_letters+string.digits
     return ''.join(random.choice(pool) for x in range(length))
     
+def debug(func):
+    msg = func.__qualname__
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        log.debug(msg)
+        return func(*args,**kwargs)
+    return wrapper
+    
 class SelfRegisteringType(type):
     extension = ''
     known_types = None
