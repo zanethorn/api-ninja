@@ -77,6 +77,9 @@ class AssetController(EditableContentController):
         fn,ext = os.path.splitext(filename)
         filename = 'source'+ext
         
+        if not self.context.user:
+            self.response.unauthorized()
+        
         uid = self.context.user.id
         path = os.path.join(content_path,str(uid))
         
