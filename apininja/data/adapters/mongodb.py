@@ -74,7 +74,7 @@ try:
                 
             elif command.action == GET:
                 query  = self.format_query(command.query)
-                log.debug('mongo running %s.find_one(%s)',container.name,query)
+                #log.debug('mongo running %s.find_one(%s)',container.name,query)
                 r = container.find_one(query)
                 if not r:
                     return None
@@ -98,7 +98,7 @@ try:
                 id = data['_id']
                 del data['_id']
                 update = {'$set': data}
-                log.debug('mongo running find_and_modify(%s,%s)',query,update)
+                #log.debug('mongo running find_and_modify(%s,%s)',query,update)
                 r= container.find_and_modify(query=query,update=update, full_response=False,new=True)
                 # try:
                     # log.debug('updated %s, %s', r, type(r))
@@ -116,7 +116,7 @@ try:
                 
             elif command.action == DELETE:
                 query  = self.format_query(command.query)
-                log.debug('mongo running remove(%s)',query)
+                #log.debug('mongo running remove(%s)',query)
                 container.remove(query)
                 return None
                 

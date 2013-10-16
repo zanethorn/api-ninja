@@ -63,7 +63,7 @@ class DataContainer(DataObject):
             t = find_type(t_name)
         except KeyError:
             pass
-        log.debug('%s is making item of type %s',self.name,t)
+        log.debug('%s is making item of type %s',self,t)
         d= t(parent=self,data=data,context = self.context)
         assert d.id
         return d
